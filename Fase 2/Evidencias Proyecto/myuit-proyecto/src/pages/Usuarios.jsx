@@ -1,0 +1,242 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { ROLES } from '../lib/roles'
+
+const ROLE_OPTIONS = Object.values(ROLES)
+
+const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '' })
+
+export default function Usuarios() {
+  const [usuarios, setUsuarios] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+
+  const [modo, setModo] = useState(null) // 'crear' | 'editar' | 'ver' | null
+  const [usuarioActivo, setUsuarioActivo] = useState(null)
+  const [form, setForm] = useState(emptyForm())
+  const [formError, setFormError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchUsuarios = async () => {
+    const { data, error } = await supabase
+      .from('usuario')
+      .select('id_usu, nom_usuario, ape_usuario, rol_usu')
+      .order('id_usu', { ascending: true })
+
+    if (error) {
+      setLoadError(error.message)
+    } else {
+      setLoadError(null)
+      setUsuarios(data)
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUsuarios().then(() => setLoading(false))
+  }, [])
+
+  const abrirCrear = () => {
+    setForm(emptyForm())
+    setFormError(null)
+    setUsuarioActivo(null)
+    setModo('crear')
+  }
+
+  const abrirVer = (usuario) => {
+    setUsuarioActivo(usuario)
+    setModo('ver')
+  }
+
+  const abrirEditar = (usuario) => {
+    setForm({
+      nom_usuario: usuario.nom_usuario ?? '',
+      ape_usuario: usuario.ape_usuario ?? '',
+      rol_usu: usuario.rol_usu ?? ROLE_OPTIONS[0] ?? '',
+    })
+    setFormError(null)
+    setUsuarioActivo(usuario)
+    setModo('editar')
+  }
+
+  const cerrarModal = () => {
+    setModo(null)
+    setUsuarioActivo(null)
+    setFormError(null)
+  }
+
+  const handleEliminar = async (usuario) => {
+    const confirmado = window.confirm(
+      `¿Eliminar a ${usuario.nom_usuario} ${usuario.ape_usuario}? Esta acción no se puede deshacer.`,
+    )
+    if (!confirmado) return
+
+    const { error } = await supabase.from('usuario').delete().eq('id_usu', usuario.id_usu)
+    if (error) {
+      setLoadError(error.message)
+      return
+    }
+    setUsuarios((prev) => prev.filter((u) => u.id_usu !== usuario.id_usu))
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setFormError(null)
+
+    if (!form.nom_usuario.trim() || !form.ape_usuario.trim()) {
+      setFormError('Nombre y apellido son obligatorios.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      if (modo === 'crear') {
+        const { error } = await supabase.from('usuario').insert(form)
+        if (error) throw error
+      } else if (modo === 'editar' && usuarioActivo) {
+        const { error } = await supabase.from('usuario').update(form).eq('id_usu', usuarioActivo.id_usu)
+        if (error) throw error
+      }
+
+      cerrarModal()
+      await fetchUsuarios()
+    } catch (err) {
+      setFormError(err.message ?? 'No se pudo guardar el usuario.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="usuarios-page">
+      <div className="usuarios-header">
+        <h1>Módulo de Usuarios</h1>
+        <button type="button" onClick={abrirCrear}>
+          + Nuevo usuario
+        </button>
+      </div>
+
+      {loading && <p>Cargando usuarios...</p>}
+      {loadError && <p className="form-error">{loadError}</p>}
+
+      {!loading && !loadError && (
+        <table className="usuarios-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usuarios.map((usuario) => (
+              <tr key={usuario.id_usu}>
+                <td>{usuario.id_usu}</td>
+                <td>{usuario.nom_usuario}</td>
+                <td>{usuario.ape_usuario}</td>
+                <td>
+                  <span className="rol-badge">{usuario.rol_usu ?? '—'}</span>
+                </td>
+                <td className="usuarios-actions">
+                  <button type="button" className="link-btn" onClick={() => abrirVer(usuario)}>
+                    Ver
+                  </button>
+                  <button type="button" className="link-btn" onClick={() => abrirEditar(usuario)}>
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn link-btn-danger"
+                    onClick={() => handleEliminar(usuario)}
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {usuarios.length === 0 && (
+              <tr>
+                <td colSpan={5}>Todavía no hay usuarios registrados.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {(modo === 'crear' || modo === 'editar') && (
+        <div className="modal-overlay" onClick={cerrarModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>{modo === 'crear' ? 'Nuevo usuario' : 'Editar usuario'}</h2>
+            <form className="usuario-form" onSubmit={handleSubmit}>
+              <label>
+                Nombre
+                <input
+                  value={form.nom_usuario}
+                  onChange={(e) => setForm((prev) => ({ ...prev, nom_usuario: e.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Apellido
+                <input
+                  value={form.ape_usuario}
+                  onChange={(e) => setForm((prev) => ({ ...prev, ape_usuario: e.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Rol
+                <select
+                  value={form.rol_usu}
+                  onChange={(e) => setForm((prev) => ({ ...prev, rol_usu: e.target.value }))}
+                >
+                  {ROLE_OPTIONS.map((rol) => (
+                    <option key={rol} value={rol}>
+                      {rol}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {formError && <p className="form-error">{formError}</p>}
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={submitting}>
+                  {submitting ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modo === 'ver' && usuarioActivo && (
+        <div className="modal-overlay" onClick={cerrarModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Detalle del usuario</h2>
+            <dl className="usuario-detalle">
+              <dt>ID</dt>
+              <dd>{usuarioActivo.id_usu}</dd>
+              <dt>Nombre</dt>
+              <dd>{usuarioActivo.nom_usuario}</dd>
+              <dt>Apellido</dt>
+              <dd>{usuarioActivo.ape_usuario}</dd>
+              <dt>Rol</dt>
+              <dd>{usuarioActivo.rol_usu ?? '—'}</dd>
+            </dl>
+            <div className="modal-actions">
+              <button type="button" onClick={cerrarModal}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

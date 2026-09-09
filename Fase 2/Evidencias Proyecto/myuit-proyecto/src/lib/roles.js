@@ -12,3 +12,7 @@ export const ROLES = {
 // Cuando definan los permisos de cortadora/operaria, restringe así:
 // export const ROLES_MODULO_PEDIDOS = [ROLES.JEFA_TALLER]
 export const ROLES_MODULO_PEDIDOS = []
+
+// Roles que pueden entrar al módulo de usuarios.
+// Déjalo vacío ([]) para permitir el acceso a cualquier usuario autenticado.
+export const ROLES_MODULO_USUARIOS = []

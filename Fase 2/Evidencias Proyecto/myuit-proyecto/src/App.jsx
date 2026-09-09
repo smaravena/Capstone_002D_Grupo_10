@@ -2,10 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Unauthorized from './pages/Unauthorized'
 import Pedidos from './pages/Pedidos'
-import { ROLES_MODULO_PEDIDOS } from './lib/roles'
+import Usuarios from './pages/Usuarios'
+import { ROLES_MODULO_PEDIDOS, ROLES_MODULO_USUARIOS } from './lib/roles'
 import './App.css'
 
 function App() {
@@ -13,6 +15,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<Unauthorized />} />
 
@@ -23,7 +26,14 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/pedidos" replace />} />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute allowedRoles={ROLES_MODULO_USUARIOS}>
+                  <Usuarios />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/pedidos"
               element={

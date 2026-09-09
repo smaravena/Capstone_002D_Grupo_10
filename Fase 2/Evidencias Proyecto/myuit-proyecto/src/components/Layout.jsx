@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import Logo from './Logo'
 
 export default function Layout() {
   const { usuario, role, signOut } = useAuth()
@@ -13,8 +14,13 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-title">MyUIT</span>
+        <span className="app-title">
+          <Logo size={44} />
+        </span>
         <nav className="app-nav">
+          <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Usuarios
+          </NavLink>
           <NavLink to="/pedidos" className={({ isActive }) => (isActive ? 'active' : '')}>
             Pedidos
           </NavLink>
