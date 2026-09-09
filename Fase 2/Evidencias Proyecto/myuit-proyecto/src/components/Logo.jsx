@@ -1,4 +1,4 @@
-import logoImg from '../assets/logo_milyunaideas.jpeg'
+import logoImg from '../assets/logo.png'
 
 export default function Logo({ size = 40, className = '' }) {
   return (

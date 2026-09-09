@@ -304,6 +304,32 @@
   color: #d9376e;
 }
 
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--accent-bg);
+}
+
+.icon-btn-danger {
+  color: #d9376e;
+}
+
+.icon-btn-danger:hover {
+  background: rgba(217, 55, 110, 0.12);
+}
+
 .pedidos-table,
 .usuarios-table {
   width: 100%;
@@ -340,7 +366,12 @@
 
 .usuarios-actions {
   display: flex;
-  gap: 12px;
+  gap: 4px;
+}
+
+.pedidos-table tbody tr:last-child td,
+.usuarios-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .rol-badge {
@@ -401,21 +432,69 @@
   margin-top: 16px;
 }
 
-.usuario-detalle {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 16px;
-  margin: 0;
+.modal-actions .btn-secondary {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
-.usuario-detalle dt {
+.modal-actions button[type='submit'] {
+  margin-top: 0;
+}
+
+.btn-danger {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #d9376e;
+  color: #fff;
   font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.usuario-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detalle-field {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.detalle-label {
   color: var(--text);
 }
 
-.usuario-detalle dd {
-  margin: 0;
+.detalle-value {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
   color: var(--text-h);
+}
+
+.modal-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text);
 }
 
 /* Landing */

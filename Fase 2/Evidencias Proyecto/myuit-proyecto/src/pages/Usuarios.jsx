@@ -6,16 +6,42 @@ const ROLE_OPTIONS = Object.values(ROLES)
 
 const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '' })
 
+const IconEye = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const IconPencil = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+)
+
+const IconTrash = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </svg>
+)
+
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
-  const [modo, setModo] = useState(null) // 'crear' | 'editar' | 'ver' | null
+  const [modo, setModo] = useState(null) // 'crear' | 'editar' | 'ver' | 'eliminar' | null
   const [usuarioActivo, setUsuarioActivo] = useState(null)
   const [form, setForm] = useState(emptyForm())
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchUsuarios = async () => {
     const { data, error } = await supabase
@@ -59,24 +85,33 @@ export default function Usuarios() {
     setModo('editar')
   }
 
+  const abrirEliminar = (usuario) => {
+    setUsuarioActivo(usuario)
+    setDeleteError(null)
+    setModo('eliminar')
+  }
+
   const cerrarModal = () => {
     setModo(null)
     setUsuarioActivo(null)
     setFormError(null)
+    setDeleteError(null)
   }
 
-  const handleEliminar = async (usuario) => {
-    const confirmado = window.confirm(
-      `¿Eliminar a ${usuario.nom_usuario} ${usuario.ape_usuario}? Esta acción no se puede deshacer.`,
-    )
-    if (!confirmado) return
+  const confirmarEliminar = async () => {
+    if (!usuarioActivo) return
 
-    const { error } = await supabase.from('usuario').delete().eq('id_usu', usuario.id_usu)
+    setDeleting(true)
+    setDeleteError(null)
+    const { error } = await supabase.from('usuario').delete().eq('id_usu', usuarioActivo.id_usu)
+    setDeleting(false)
+
     if (error) {
-      setLoadError(error.message)
+      setDeleteError(error.message)
       return
     }
-    setUsuarios((prev) => prev.filter((u) => u.id_usu !== usuario.id_usu))
+    setUsuarios((prev) => prev.filter((u) => u.id_usu !== usuarioActivo.id_usu))
+    cerrarModal()
   }
 
   const handleSubmit = async (event) => {
@@ -140,18 +175,32 @@ export default function Usuarios() {
                   <span className="rol-badge">{usuario.rol_usu ?? '—'}</span>
                 </td>
                 <td className="usuarios-actions">
-                  <button type="button" className="link-btn" onClick={() => abrirVer(usuario)}>
-                    Ver
-                  </button>
-                  <button type="button" className="link-btn" onClick={() => abrirEditar(usuario)}>
-                    Editar
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    title="Ver"
+                    aria-label="Ver usuario"
+                    onClick={() => abrirVer(usuario)}
+                  >
+                    <IconEye />
                   </button>
                   <button
                     type="button"
-                    className="link-btn link-btn-danger"
-                    onClick={() => handleEliminar(usuario)}
+                    className="icon-btn"
+                    title="Editar"
+                    aria-label="Editar usuario"
+                    onClick={() => abrirEditar(usuario)}
                   >
-                    Eliminar
+                    <IconPencil />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn-danger"
+                    title="Eliminar"
+                    aria-label="Eliminar usuario"
+                    onClick={() => abrirEliminar(usuario)}
+                  >
+                    <IconTrash />
                   </button>
                 </td>
               </tr>
@@ -219,19 +268,54 @@ export default function Usuarios() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>Detalle del usuario</h2>
-            <dl className="usuario-detalle">
-              <dt>ID</dt>
-              <dd>{usuarioActivo.id_usu}</dd>
-              <dt>Nombre</dt>
-              <dd>{usuarioActivo.nom_usuario}</dd>
-              <dt>Apellido</dt>
-              <dd>{usuarioActivo.ape_usuario}</dd>
-              <dt>Rol</dt>
-              <dd>{usuarioActivo.rol_usu ?? '—'}</dd>
-            </dl>
+            <div className="usuario-detalle">
+              <div className="detalle-field">
+                <span className="detalle-label">ID</span>
+                <span className="detalle-value">{usuarioActivo.id_usu}</span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Nombre</span>
+                <span className="detalle-value">{usuarioActivo.nom_usuario}</span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Apellido</span>
+                <span className="detalle-value">{usuarioActivo.ape_usuario}</span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Rol</span>
+                <span className="detalle-value">{usuarioActivo.rol_usu ?? '—'}</span>
+              </div>
+            </div>
             <div className="modal-actions">
-              <button type="button" onClick={cerrarModal}>
+              <button type="button" className="btn-secondary" onClick={cerrarModal}>
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modo === 'eliminar' && usuarioActivo && (
+        <div className="modal-overlay" onClick={cerrarModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Eliminar usuario</h2>
+            <p>
+              ¿Seguro que deseas eliminar al siguiente usuario?
+              <br />
+              <strong>
+                {usuarioActivo.nom_usuario} {usuarioActivo.ape_usuario}
+              </strong>
+            </p>
+            <p className="modal-hint">Esta acción no se puede deshacer.</p>
+
+            {deleteError && <p className="form-error">{deleteError}</p>}
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                Cancelar
+              </button>
+              <button type="button" className="btn-danger" disabled={deleting} onClick={confirmarEliminar}>
+                {deleting ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>
