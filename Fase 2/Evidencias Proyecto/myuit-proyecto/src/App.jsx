@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Unauthorized from './pages/Unauthorized'
 import Pedidos from './pages/Pedidos'
 import Usuarios from './pages/Usuarios'
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/no-autorizado" element={<Unauthorized />} />
 
           <Route

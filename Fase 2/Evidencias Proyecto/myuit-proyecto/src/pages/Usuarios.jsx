@@ -4,7 +4,9 @@ import { ROLES } from '../lib/roles'
 
 const ROLE_OPTIONS = Object.values(ROLES)
 
-const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '' })
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '', correo: '' })
 
 const IconEye = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,7 +48,7 @@ export default function Usuarios() {
   const fetchUsuarios = async () => {
     const { data, error } = await supabase
       .from('usuario')
-      .select('id_usu, nom_usuario, ape_usuario, rol_usu')
+      .select('id_usu, nom_usuario, ape_usuario, rol_usu, correo')
       .order('id_usu', { ascending: true })
 
     if (error) {
@@ -79,6 +81,7 @@ export default function Usuarios() {
       nom_usuario: usuario.nom_usuario ?? '',
       ape_usuario: usuario.ape_usuario ?? '',
       rol_usu: usuario.rol_usu ?? ROLE_OPTIONS[0] ?? '',
+      correo: usuario.correo ?? '',
     })
     setFormError(null)
     setUsuarioActivo(usuario)
@@ -118,18 +121,45 @@ export default function Usuarios() {
     event.preventDefault()
     setFormError(null)
 
-    if (!form.nom_usuario.trim() || !form.ape_usuario.trim()) {
-      setFormError('Nombre y apellido son obligatorios.')
+    const correo = form.correo.trim()
+
+    if (!form.nom_usuario.trim() || !form.ape_usuario.trim() || !correo) {
+      setFormError('Nombre, apellido y correo son obligatorios.')
+      return
+    }
+
+    if (!EMAIL_REGEX.test(correo)) {
+      setFormError('Ingresa un correo electrónico válido.')
       return
     }
 
     setSubmitting(true)
     try {
+      const payload = { ...form, correo }
+
       if (modo === 'crear') {
-        const { error } = await supabase.from('usuario').insert(form)
+        const { error } = await supabase.from('usuario').insert(payload)
         if (error) throw error
+
+        // Crea la cuenta de acceso (si no existe) y envía un correo de invitación
+        // para que el usuario defina su contraseña en /reset-password.
+        const { error: inviteError } = await supabase.auth.signInWithOtp({
+          email: correo,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: `${window.location.origin}/reset-password`,
+          },
+        })
+        if (inviteError) {
+          setFormError(
+            `El usuario se creó, pero no se pudo enviar el correo de invitación: ${inviteError.message}`,
+          )
+          await fetchUsuarios()
+          setSubmitting(false)
+          return
+        }
       } else if (modo === 'editar' && usuarioActivo) {
-        const { error } = await supabase.from('usuario').update(form).eq('id_usu', usuarioActivo.id_usu)
+        const { error } = await supabase.from('usuario').update(payload).eq('id_usu', usuarioActivo.id_usu)
         if (error) throw error
       }
 
@@ -161,6 +191,7 @@ export default function Usuarios() {
               <th>#</th>
               <th>Nombre</th>
               <th>Apellido</th>
+              <th>Correo</th>
               <th>Rol</th>
               <th>Acciones</th>
             </tr>
@@ -171,6 +202,7 @@ export default function Usuarios() {
                 <td>{usuario.id_usu}</td>
                 <td>{usuario.nom_usuario}</td>
                 <td>{usuario.ape_usuario}</td>
+                <td>{usuario.correo ?? '—'}</td>
                 <td>
                   <span className="rol-badge">{usuario.rol_usu ?? '—'}</span>
                 </td>
@@ -207,7 +239,7 @@ export default function Usuarios() {
             ))}
             {usuarios.length === 0 && (
               <tr>
-                <td colSpan={5}>Todavía no hay usuarios registrados.</td>
+                <td colSpan={6}>Todavía no hay usuarios registrados.</td>
               </tr>
             )}
           </tbody>
@@ -232,6 +264,15 @@ export default function Usuarios() {
                 <input
                   value={form.ape_usuario}
                   onChange={(e) => setForm((prev) => ({ ...prev, ape_usuario: e.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Correo electrónico
+                <input
+                  type="email"
+                  value={form.correo}
+                  onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))}
                   required
                 />
               </label>
@@ -280,6 +321,10 @@ export default function Usuarios() {
               <div className="detalle-field">
                 <span className="detalle-label">Apellido</span>
                 <span className="detalle-value">{usuarioActivo.ape_usuario}</span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Correo</span>
+                <span className="detalle-value">{usuarioActivo.correo ?? '—'}</span>
               </div>
               <div className="detalle-field">
                 <span className="detalle-label">Rol</span>
