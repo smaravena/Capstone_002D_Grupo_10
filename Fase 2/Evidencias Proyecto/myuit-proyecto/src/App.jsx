@@ -8,7 +8,8 @@ import ResetPassword from './pages/ResetPassword'
 import Unauthorized from './pages/Unauthorized'
 import Pedidos from './pages/Pedidos'
 import Usuarios from './pages/Usuarios'
-import { ROLES_MODULO_PEDIDOS, ROLES_MODULO_USUARIOS } from './lib/roles'
+import Clientes from './pages/Clientes'
+import { ROLES_MODULO_PEDIDOS, ROLES_MODULO_USUARIOS, ROLES_MODULO_CLIENTES } from './lib/roles'
 import './App.css'
 
 function App() {
@@ -41,6 +42,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={ROLES_MODULO_PEDIDOS}>
                   <Pedidos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clientes"
+              element={
+                <ProtectedRoute allowedRoles={ROLES_MODULO_CLIENTES}>
+                  <Clientes />
                 </ProtectedRoute>
               }
             />

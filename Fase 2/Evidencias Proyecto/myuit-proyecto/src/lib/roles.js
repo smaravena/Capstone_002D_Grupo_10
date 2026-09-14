@@ -16,3 +16,7 @@ export const ROLES_MODULO_PEDIDOS = []
 // Roles que pueden entrar al módulo de usuarios.
 // Déjalo vacío ([]) para permitir el acceso a cualquier usuario autenticado.
 export const ROLES_MODULO_USUARIOS = []
+
+// Roles que pueden entrar al módulo de clientes.
+// Déjalo vacío ([]) para permitir el acceso a cualquier usuario autenticado.
+export const ROLES_MODULO_CLIENTES = []

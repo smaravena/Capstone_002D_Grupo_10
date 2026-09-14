@@ -1,95 +1,91 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { ROLES } from '../lib/roles'
-import { EMAIL_REGEX } from '../lib/validators'
+import { EMAIL_REGEX, PHONE_REGEX } from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
 
-const ROLE_OPTIONS = Object.values(ROLES)
+const emptyForm = () => ({ nom_cli: '', num_cli: '', correo_cli: '' })
 
-const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '', correo: '' })
-
-export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState([])
+export default function Clientes() {
+  const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
   const [modo, setModo] = useState(null) // 'crear' | 'editar' | 'ver' | 'eliminar' | null
-  const [usuarioActivo, setUsuarioActivo] = useState(null)
+  const [clienteActivo, setClienteActivo] = useState(null)
   const [form, setForm] = useState(emptyForm())
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const fetchUsuarios = async () => {
+  const fetchClientes = async () => {
     const { data, error } = await supabase
-      .from('usuario')
-      .select('id_usu, nom_usuario, ape_usuario, rol_usu, correo')
-      .order('id_usu', { ascending: true })
+      .from('cliente')
+      .select('id_cli, nom_cli, num_cli, correo_cli')
+      .order('nom_cli')
 
     if (error) {
       setLoadError(error.message)
     } else {
       setLoadError(null)
-      setUsuarios(data)
+      setClientes(data)
     }
   }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchUsuarios().then(() => setLoading(false))
+    fetchClientes().then(() => setLoading(false))
   }, [])
 
   const abrirCrear = () => {
     setForm(emptyForm())
     setFormError(null)
-    setUsuarioActivo(null)
+    setClienteActivo(null)
     setModo('crear')
   }
 
-  const abrirVer = (usuario) => {
-    setUsuarioActivo(usuario)
+  const abrirVer = (cliente) => {
+    setClienteActivo(cliente)
     setModo('ver')
   }
 
-  const abrirEditar = (usuario) => {
+  const abrirEditar = (cliente) => {
     setForm({
-      nom_usuario: usuario.nom_usuario ?? '',
-      ape_usuario: usuario.ape_usuario ?? '',
-      rol_usu: usuario.rol_usu ?? ROLE_OPTIONS[0] ?? '',
-      correo: usuario.correo ?? '',
+      nom_cli: cliente.nom_cli ?? '',
+      num_cli: cliente.num_cli ?? '',
+      correo_cli: cliente.correo_cli ?? '',
     })
     setFormError(null)
-    setUsuarioActivo(usuario)
+    setClienteActivo(cliente)
     setModo('editar')
   }
 
-  const abrirEliminar = (usuario) => {
-    setUsuarioActivo(usuario)
+  const abrirEliminar = (cliente) => {
+    setClienteActivo(cliente)
     setDeleteError(null)
     setModo('eliminar')
   }
 
   const cerrarModal = () => {
     setModo(null)
-    setUsuarioActivo(null)
+    setClienteActivo(null)
     setFormError(null)
     setDeleteError(null)
   }
 
   const confirmarEliminar = async () => {
-    if (!usuarioActivo) return
+    if (!clienteActivo) return
 
     setDeleting(true)
     setDeleteError(null)
-    const { error } = await supabase.from('usuario').delete().eq('id_usu', usuarioActivo.id_usu)
+    const { error } = await supabase.from('cliente').delete().eq('id_cli', clienteActivo.id_cli)
     setDeleting(false)
 
     if (error) {
       setDeleteError(error.message)
       return
     }
-    setUsuarios((prev) => prev.filter((u) => u.id_usu !== usuarioActivo.id_usu))
+    setClientes((prev) => prev.filter((c) => c.id_cli !== clienteActivo.id_cli))
     cerrarModal()
   }
 
@@ -97,52 +93,41 @@ export default function Usuarios() {
     event.preventDefault()
     setFormError(null)
 
-    const correo = form.correo.trim()
+    const nom_cli = form.nom_cli.trim()
+    const num_cli = form.num_cli.trim()
+    const correo_cli = form.correo_cli.trim()
 
-    if (!form.nom_usuario.trim() || !form.ape_usuario.trim() || !correo) {
-      setFormError('Nombre, apellido y correo son obligatorios.')
+    if (!nom_cli || !num_cli) {
+      setFormError('Nombre y teléfono son obligatorios.')
       return
     }
 
-    if (!EMAIL_REGEX.test(correo)) {
+    if (!PHONE_REGEX.test(num_cli)) {
+      setFormError('Ingresa un teléfono válido.')
+      return
+    }
+
+    if (correo_cli && !EMAIL_REGEX.test(correo_cli)) {
       setFormError('Ingresa un correo electrónico válido.')
       return
     }
 
     setSubmitting(true)
     try {
-      const payload = { ...form, correo }
+      const payload = { nom_cli, num_cli, correo_cli: correo_cli || null }
 
       if (modo === 'crear') {
-        const { error } = await supabase.from('usuario').insert(payload)
+        const { error } = await supabase.from('cliente').insert(payload)
         if (error) throw error
-
-        // Crea la cuenta de acceso (si no existe) y envía un correo de invitación
-        // para que el usuario defina su contraseña en /reset-password.
-        const { error: inviteError } = await supabase.auth.signInWithOtp({
-          email: correo,
-          options: {
-            shouldCreateUser: true,
-            emailRedirectTo: `${window.location.origin}/reset-password`,
-          },
-        })
-        if (inviteError) {
-          setFormError(
-            `El usuario se creó, pero no se pudo enviar el correo de invitación: ${inviteError.message}`,
-          )
-          await fetchUsuarios()
-          setSubmitting(false)
-          return
-        }
-      } else if (modo === 'editar' && usuarioActivo) {
-        const { error } = await supabase.from('usuario').update(payload).eq('id_usu', usuarioActivo.id_usu)
+      } else if (modo === 'editar' && clienteActivo) {
+        const { error } = await supabase.from('cliente').update(payload).eq('id_cli', clienteActivo.id_cli)
         if (error) throw error
       }
 
       cerrarModal()
-      await fetchUsuarios()
+      await fetchClientes()
     } catch (err) {
-      setFormError(err.message ?? 'No se pudo guardar el usuario.')
+      setFormError(err.message ?? 'No se pudo guardar el cliente.')
     } finally {
       setSubmitting(false)
     }
@@ -151,13 +136,13 @@ export default function Usuarios() {
   return (
     <div className="usuarios-page">
       <div className="usuarios-header">
-        <h1>Módulo de Usuarios</h1>
+        <h1>Módulo de Clientes</h1>
         <button type="button" onClick={abrirCrear}>
-           Nuevo usuario
+           Nuevo cliente
         </button>
       </div>
 
-      {loading && <p>Cargando usuarios...</p>}
+      {loading && <p>Cargando clientes...</p>}
       {loadError && <p className="form-error">{loadError}</p>}
 
       {!loading && !loadError && (
@@ -166,29 +151,25 @@ export default function Usuarios() {
             <tr>
               <th>#</th>
               <th>Nombre</th>
-              <th>Apellido</th>
+              <th>Teléfono</th>
               <th>Correo</th>
-              <th>Rol</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {usuarios.map((usuario) => (
-              <tr key={usuario.id_usu}>
-                <td>{usuario.id_usu}</td>
-                <td>{usuario.nom_usuario}</td>
-                <td>{usuario.ape_usuario}</td>
-                <td>{usuario.correo ?? '—'}</td>
-                <td>
-                  <span className="rol-badge">{usuario.rol_usu ?? '—'}</span>
-                </td>
+            {clientes.map((cliente) => (
+              <tr key={cliente.id_cli}>
+                <td>{cliente.id_cli}</td>
+                <td>{cliente.nom_cli}</td>
+                <td>{cliente.num_cli}</td>
+                <td>{cliente.correo_cli ?? '—'}</td>
                 <td className="usuarios-actions">
                   <button
                     type="button"
                     className="icon-btn"
                     title="Ver"
-                    aria-label="Ver usuario"
-                    onClick={() => abrirVer(usuario)}
+                    aria-label="Ver cliente"
+                    onClick={() => abrirVer(cliente)}
                   >
                     <IconEye />
                   </button>
@@ -196,8 +177,8 @@ export default function Usuarios() {
                     type="button"
                     className="icon-btn"
                     title="Editar"
-                    aria-label="Editar usuario"
-                    onClick={() => abrirEditar(usuario)}
+                    aria-label="Editar cliente"
+                    onClick={() => abrirEditar(cliente)}
                   >
                     <IconPencil />
                   </button>
@@ -205,17 +186,17 @@ export default function Usuarios() {
                     type="button"
                     className="icon-btn icon-btn-danger"
                     title="Eliminar"
-                    aria-label="Eliminar usuario"
-                    onClick={() => abrirEliminar(usuario)}
+                    aria-label="Eliminar cliente"
+                    onClick={() => abrirEliminar(cliente)}
                   >
                     <IconTrash />
                   </button>
                 </td>
               </tr>
             ))}
-            {usuarios.length === 0 && (
+            {clientes.length === 0 && (
               <tr>
-                <td colSpan={6}>Todavía no hay usuarios registrados.</td>
+                <td colSpan={5}>Todavía no hay clientes registrados.</td>
               </tr>
             )}
           </tbody>
@@ -225,21 +206,21 @@ export default function Usuarios() {
       {(modo === 'crear' || modo === 'editar') && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>{modo === 'crear' ? 'Nuevo usuario' : 'Editar usuario'}</h2>
+            <h2>{modo === 'crear' ? 'Nuevo cliente' : 'Editar cliente'}</h2>
             <form className="usuario-form" onSubmit={handleSubmit}>
               <label>
                 Nombre
                 <input
-                  value={form.nom_usuario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nom_usuario: e.target.value }))}
+                  value={form.nom_cli}
+                  onChange={(e) => setForm((prev) => ({ ...prev, nom_cli: e.target.value }))}
                   required
                 />
               </label>
               <label>
-                Apellido
+                Teléfono
                 <input
-                  value={form.ape_usuario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, ape_usuario: e.target.value }))}
+                  value={form.num_cli}
+                  onChange={(e) => setForm((prev) => ({ ...prev, num_cli: e.target.value }))}
                   required
                 />
               </label>
@@ -247,23 +228,9 @@ export default function Usuarios() {
                 Correo electrónico
                 <input
                   type="email"
-                  value={form.correo}
-                  onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))}
-                  required
+                  value={form.correo_cli}
+                  onChange={(e) => setForm((prev) => ({ ...prev, correo_cli: e.target.value }))}
                 />
-              </label>
-              <label>
-                Rol
-                <select
-                  value={form.rol_usu}
-                  onChange={(e) => setForm((prev) => ({ ...prev, rol_usu: e.target.value }))}
-                >
-                  {ROLE_OPTIONS.map((rol) => (
-                    <option key={rol} value={rol}>
-                      {rol}
-                    </option>
-                  ))}
-                </select>
               </label>
 
               {formError && <p className="form-error">{formError}</p>}
@@ -281,30 +248,26 @@ export default function Usuarios() {
         </div>
       )}
 
-      {modo === 'ver' && usuarioActivo && (
+      {modo === 'ver' && clienteActivo && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Detalle del usuario</h2>
+            <h2>Detalle del cliente</h2>
             <div className="usuario-detalle">
               <div className="detalle-field">
                 <span className="detalle-label">ID</span>
-                <span className="detalle-value">{usuarioActivo.id_usu}</span>
+                <span className="detalle-value">{clienteActivo.id_cli}</span>
               </div>
               <div className="detalle-field">
                 <span className="detalle-label">Nombre</span>
-                <span className="detalle-value">{usuarioActivo.nom_usuario}</span>
+                <span className="detalle-value">{clienteActivo.nom_cli}</span>
               </div>
               <div className="detalle-field">
-                <span className="detalle-label">Apellido</span>
-                <span className="detalle-value">{usuarioActivo.ape_usuario}</span>
+                <span className="detalle-label">Teléfono</span>
+                <span className="detalle-value">{clienteActivo.num_cli}</span>
               </div>
               <div className="detalle-field">
                 <span className="detalle-label">Correo</span>
-                <span className="detalle-value">{usuarioActivo.correo ?? '—'}</span>
-              </div>
-              <div className="detalle-field">
-                <span className="detalle-label">Rol</span>
-                <span className="detalle-value">{usuarioActivo.rol_usu ?? '—'}</span>
+                <span className="detalle-value">{clienteActivo.correo_cli ?? '—'}</span>
               </div>
             </div>
             <div className="modal-actions">
@@ -316,16 +279,14 @@ export default function Usuarios() {
         </div>
       )}
 
-      {modo === 'eliminar' && usuarioActivo && (
+      {modo === 'eliminar' && clienteActivo && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Eliminar usuario</h2>
+            <h2>Eliminar cliente</h2>
             <p>
-              ¿Seguro que deseas eliminar al siguiente usuario?
+              ¿Seguro que deseas eliminar al siguiente cliente?
               <br />
-              <strong>
-                {usuarioActivo.nom_usuario} {usuarioActivo.ape_usuario}
-              </strong>
+              <strong>{clienteActivo.nom_cli}</strong>
             </p>
             <p className="modal-hint">Esta acción no se puede deshacer.</p>
 

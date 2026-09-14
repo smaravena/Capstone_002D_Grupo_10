@@ -1,4 +1,3 @@
-// Sugerencias de estado para el select con autocompletado del formulario de
-// pedidos. Como estado_pedido es varchar libre en la base, ajusta esta lista
-// a los valores reales que use tu equipo.
-export const ESTADOS_PEDIDO = ['pendiente', 'en_proceso', 'listo', 'entregado', 'cancelado']
+// Estados válidos para un pedido. El campo estado_pedido se edita siempre
+// mediante una lista desplegable con estos valores, nunca como texto libre.
+export const ESTADOS_PEDIDO = ['pendiente', 'en progreso', 'por revisar', 'listo']

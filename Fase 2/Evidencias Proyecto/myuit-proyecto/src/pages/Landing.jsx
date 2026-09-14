@@ -2,6 +2,27 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 import SocialIcons from '../components/SocialIcons'
+import Carousel from '../components/Carousel'
+import { useAuth } from '../hooks/useAuth'
+import fotoTaller1 from '../assets/foto_taller1.jpeg'
+import fotoTaller2 from '../assets/foto_taller2.jpeg'
+import fotoTaller3 from '../assets/foto_taller3.jpeg'
+import fotoTaller4 from '../assets/foto_taller4.jpeg'
+import fotoTaller5 from '../assets/foto_taller5.jpeg'
+import fotoTaller6 from '../assets/foto_taller6.jpeg'
+import fotoTaller7 from '../assets/foto_taller7.jpeg'
+import fotoTaller8 from '../assets/foto_taller8.jpeg'
+
+const FOTOS_TALLER = [
+  fotoTaller1,
+  fotoTaller2,
+  fotoTaller3,
+  fotoTaller4,
+  fotoTaller5,
+  fotoTaller6,
+  fotoTaller7,
+  fotoTaller8,
+]
 
 const FEATURES = [
   {
@@ -54,6 +75,7 @@ const FAQ_ITEMS = [
 
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0)
+  const { isAuthenticated } = useAuth()
 
   return (
     <div className="landing">
@@ -63,11 +85,12 @@ export default function Landing() {
         </Link>
         <nav className="landing-nav">
           <a href="#servicios">Servicios</a>
+          <a href="#taller">Nuestro taller</a>
           <a href="#faq">Preguntas frecuentes</a>
           <a href="#contacto">Contacto</a>
         </nav>
-        <Link to="/login" className="btn-login">
-          Iniciar sesión
+        <Link to={isAuthenticated ? '/usuarios' : '/login'} className="btn-login">
+          {isAuthenticated ? 'Ingresar' : 'Iniciar sesión'}
         </Link>
       </header>
 
@@ -102,6 +125,12 @@ export default function Landing() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section id="taller" className="landing-gallery">
+        <h2>Nuestro taller</h2>
+        <p className="gallery-subtitle">Un vistazo al espacio donde cobran vida las prendas.</p>
+        <Carousel images={FOTOS_TALLER} />
       </section>
 
       <section id="faq" className="landing-faq">

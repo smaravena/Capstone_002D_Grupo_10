@@ -7,19 +7,22 @@
   --code-bg: #f4f3ec;
 
   /* Paleta vívida inspirada en el logo de Mil y Una Ideas */
-  --yellow: #ffd93d;
-  --yellow-soft: #fff3c4;
+  --yellow: #ffd400;
+  --yellow-soft: #fff0b3;
   --ink: #221a08;
-  --pink: #e5227d;
-  --purple: #8e44ad;
-  --blue: #2d9cdb;
-  --green: #4cb944;
-  --orange: #f5a623;
-  --teal: #29abe2;
+  --pink: #ff1f8f;
+  --purple: #9b30d9;
+  --blue: #0e96f5;
+  --green: #22c55e;
+  --orange: #ff9100;
+  --teal: #00c2e0;
 
-  --accent: #e5227d;
-  --accent-bg: rgba(229, 34, 125, 0.1);
-  --accent-border: rgba(229, 34, 125, 0.45);
+  --accent: #ff1f8f;
+  --accent-2: #9b30d9;
+  --accent-bg: rgba(255, 31, 143, 0.1);
+  --accent-border: rgba(255, 31, 143, 0.45);
+  --accent-gradient: linear-gradient(135deg, var(--pink) 0%, var(--purple) 100%);
+  --brand-gradient: linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
@@ -54,8 +57,11 @@
     --yellow: #ffd93d;
     --yellow-soft: #3a2f1c;
     --accent: #ff5fa8;
+    --accent-2: #b36bf0;
     --accent-bg: rgba(255, 95, 168, 0.15);
     --accent-border: rgba(255, 95, 168, 0.5);
+    --accent-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    --brand-gradient: linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;

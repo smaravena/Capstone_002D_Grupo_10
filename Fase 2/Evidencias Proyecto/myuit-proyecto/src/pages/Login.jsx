@@ -3,8 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import Logo from '../components/Logo'
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { EMAIL_REGEX } from '../lib/validators'
 
 export default function Login() {
   const { signIn, isAuthenticated, loading } = useAuth()
@@ -106,6 +105,9 @@ export default function Login() {
 
   return (
     <div className="login-screen">
+      <Link to="/" className="back-arrow" title="Volver al inicio" aria-label="Volver al inicio">
+        ←
+      </Link>
       <form className="login-card" onSubmit={handleSubmit} noValidate>
         <Link to="/" className="login-brand">
           <Logo size={80} />
