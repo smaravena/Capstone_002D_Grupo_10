@@ -366,6 +366,18 @@
   color: #fff;
 }
 
+.detalle-item {
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.detalle-item:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
 .detalle-row {
   display: grid;
   grid-template-columns: 2fr 1fr 2fr auto;
@@ -376,6 +388,20 @@
   @media (max-width: 700px) {
     grid-template-columns: 1fr;
   }
+}
+
+.detalle-asignacion {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detalle-asignacion label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-top: 0;
 }
 
 .link-btn {

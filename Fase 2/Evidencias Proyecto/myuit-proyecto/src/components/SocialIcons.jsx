@@ -11,7 +11,7 @@ const SOCIAL_LINKS = [
   },
   {
     name: 'Instagram',
-    url: 'https://instagram.com',
+    url: 'https://www.instagram.com/milyunaideastelas/',
     color: 'var(--pink)',
     Icon: (props) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
@@ -23,7 +23,7 @@ const SOCIAL_LINKS = [
   },
   {
     name: 'TikTok',
-    url: 'https://tiktok.com',
+    url: 'https://www.tiktok.com/@milyunaideasvalpo?lang=es',
     color: 'var(--ink)',
     Icon: (props) => (
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>

@@ -9,7 +9,13 @@ import Unauthorized from './pages/Unauthorized'
 import Pedidos from './pages/Pedidos'
 import Usuarios from './pages/Usuarios'
 import Clientes from './pages/Clientes'
-import { ROLES_MODULO_PEDIDOS, ROLES_MODULO_USUARIOS, ROLES_MODULO_CLIENTES } from './lib/roles'
+import MisTrabajos from './pages/MisTrabajos'
+import {
+  ROLES_MODULO_PEDIDOS,
+  ROLES_MODULO_USUARIOS,
+  ROLES_MODULO_CLIENTES,
+  ROLES_MODULO_MIS_TRABAJOS,
+} from './lib/roles'
 import './App.css'
 
 function App() {
@@ -50,6 +56,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={ROLES_MODULO_CLIENTES}>
                   <Clientes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mis-trabajos"
+              element={
+                <ProtectedRoute allowedRoles={ROLES_MODULO_MIS_TRABAJOS}>
+                  <MisTrabajos />
                 </ProtectedRoute>
               }
             />

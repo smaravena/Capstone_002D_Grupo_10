@@ -39,8 +39,10 @@ export function AuthProvider({ children }) {
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setLoading(true)
       setSession(newSession)
       await loadUsuario(newSession?.user?.id)
+      if (active) setLoading(false)
     })
 
     return () => {

@@ -1,10 +1,17 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { ROLES_MODULO_USUARIOS, ROLES_MODULO_CLIENTES, ROLES_MODULO_MIS_TRABAJOS } from '../lib/roles'
 import Logo from './Logo'
 
 export default function Layout() {
   const { usuario, role, signOut } = useAuth()
   const navigate = useNavigate()
+
+  const puedeVerUsuarios =
+    ROLES_MODULO_USUARIOS.length === 0 || ROLES_MODULO_USUARIOS.includes(role)
+  const puedeVerClientes =
+    ROLES_MODULO_CLIENTES.length === 0 || ROLES_MODULO_CLIENTES.includes(role)
+  const puedeVerMisTrabajos = ROLES_MODULO_MIS_TRABAJOS.includes(role)
 
   const handleSignOut = async () => {
     await signOut()
@@ -18,15 +25,24 @@ export default function Layout() {
           <Logo size={44} />
         </Link>
         <nav className="app-nav">
-          <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Usuarios
-          </NavLink>
-          <NavLink to="/clientes" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Clientes
-          </NavLink>
+          {puedeVerUsuarios && (
+            <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Usuarios
+            </NavLink>
+          )}
+          {puedeVerClientes && (
+            <NavLink to="/clientes" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Clientes
+            </NavLink>
+          )}
           <NavLink to="/pedidos" className={({ isActive }) => (isActive ? 'active' : '')}>
             Pedidos
           </NavLink>
+          {puedeVerMisTrabajos && (
+            <NavLink to="/mis-trabajos" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Mis trabajos
+            </NavLink>
+          )}
         </nav>
         <div className="app-user">
           <span>

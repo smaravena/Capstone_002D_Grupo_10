@@ -3,8 +3,23 @@ import { supabase } from '../lib/supabaseClient'
 import { ESTADOS_PEDIDO } from '../lib/pedidoConstants'
 import { EMAIL_REGEX, PHONE_REGEX } from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
+import { useAuth } from '../hooks/useAuth'
+import { ROLES } from '../lib/roles'
 
-const emptyDetalle = () => ({ tipo_prenda: '', cant_prendas: 1, obs_detalle: '' })
+const ROLES_SOLO_PROPIOS = [ROLES.CORTADORA, ROLES.OPERARIA]
+
+const TRABAJO_TIPOS = [
+  { tipo: 'corte', field: 'id_usu_corte', label: 'Cortadora' },
+  { tipo: 'armado', field: 'id_usu_armado', label: 'Operaria (armado)' },
+]
+
+const emptyDetalle = () => ({
+  tipo_prenda: '',
+  cant_prendas: 1,
+  obs_detalle: '',
+  id_usu_corte: '',
+  id_usu_armado: '',
+})
 
 const emptyForm = () => ({
   clienteMode: 'existing',
@@ -18,6 +33,9 @@ const emptyForm = () => ({
 })
 
 export default function Pedidos() {
+  const { usuario, role } = useAuth()
+  const soloPropios = ROLES_SOLO_PROPIOS.includes(role)
+
   const [pedidos, setPedidos] = useState([])
   const [clientes, setClientes] = useState([])
   const [usuarios, setUsuarios] = useState([])
@@ -32,13 +50,22 @@ export default function Pedidos() {
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
+  const cortadoras = usuarios.filter((u) => u.rol_usu === ROLES.CORTADORA)
+  const operarias = usuarios.filter((u) => u.rol_usu === ROLES.OPERARIA)
+
   const fetchPedidos = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('pedido')
       .select(
-        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), responsable:id_usu_responsable ( id_usu, nom_usuario, ape_usuario ), detalle_pedido ( id_detalle, tipo_prenda, cant_prendas, obs_detalle )',
+        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), responsable:id_usu_responsable ( id_usu, nom_usuario, ape_usuario ), detalle_pedido ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
       )
       .order('created_at', { ascending: false })
+
+    if (soloPropios) {
+      query = query.eq('id_usu_responsable', usuario?.id_usu ?? -1)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       setLoadError(error.message)
@@ -60,7 +87,7 @@ export default function Pedidos() {
   const fetchUsuarios = async () => {
     const { data, error } = await supabase
       .from('usuario')
-      .select('id_usu, nom_usuario, ape_usuario')
+      .select('id_usu, nom_usuario, ape_usuario, rol_usu')
       .order('nom_usuario')
 
     if (!error) setUsuarios(data)
@@ -93,6 +120,7 @@ export default function Pedidos() {
   }
 
   const abrirCrear = () => {
+    if (soloPropios) return
     setForm(emptyForm())
     setFormError(null)
     setPedidoActivo(null)
@@ -105,6 +133,7 @@ export default function Pedidos() {
   }
 
   const abrirEditar = (pedido) => {
+    if (soloPropios) return
     setForm({
       clienteMode: 'existing',
       id_cli: pedido.cliente?.id_cli ? String(pedido.cliente.id_cli) : '',
@@ -114,12 +143,18 @@ export default function Pedidos() {
       estado_pedido: ESTADOS_PEDIDO.includes(pedido.estado_pedido) ? pedido.estado_pedido : ESTADOS_PEDIDO[0],
       id_usu_responsable: pedido.responsable?.id_usu ? String(pedido.responsable.id_usu) : '',
       detalles: pedido.detalle_pedido?.length
-        ? pedido.detalle_pedido.map((d) => ({
-            id_detalle: d.id_detalle,
-            tipo_prenda: d.tipo_prenda,
-            cant_prendas: d.cant_prendas,
-            obs_detalle: d.obs_detalle ?? '',
-          }))
+        ? pedido.detalle_pedido.map((d) => {
+            const trabajoCorte = d.trabajo?.find((t) => t.tipo_trabajo === 'corte')
+            const trabajoArmado = d.trabajo?.find((t) => t.tipo_trabajo === 'armado')
+            return {
+              id_detalle: d.id_detalle,
+              tipo_prenda: d.tipo_prenda,
+              cant_prendas: d.cant_prendas,
+              obs_detalle: d.obs_detalle ?? '',
+              id_usu_corte: trabajoCorte?.id_usu ? String(trabajoCorte.id_usu) : '',
+              id_usu_armado: trabajoArmado?.id_usu ? String(trabajoArmado.id_usu) : '',
+            }
+          })
         : [emptyDetalle()],
     })
     setFormError(null)
@@ -128,6 +163,7 @@ export default function Pedidos() {
   }
 
   const abrirEliminar = (pedido) => {
+    if (soloPropios) return
     setPedidoActivo(pedido)
     setDeleteError(null)
     setModo('eliminar')
@@ -177,6 +213,33 @@ export default function Pedidos() {
     return null
   }
 
+  const syncTrabajoAsignaciones = async (id_detalle, detalle, trabajosExistentes = []) => {
+    for (const { tipo, field } of TRABAJO_TIPOS) {
+      const selectedUsu = detalle[field]
+      const existente = trabajosExistentes.find((t) => t.tipo_trabajo === tipo)
+
+      if (selectedUsu) {
+        if (existente) {
+          if (String(existente.id_usu) !== String(selectedUsu)) {
+            const { error } = await supabase
+              .from('trabajo')
+              .update({ id_usu: selectedUsu })
+              .eq('id_trabajo', existente.id_trabajo)
+            if (error) throw error
+          }
+        } else {
+          const { error } = await supabase
+            .from('trabajo')
+            .insert({ id_detalle, id_usu: selectedUsu, tipo_trabajo: tipo })
+          if (error) throw error
+        }
+      } else if (existente) {
+        const { error } = await supabase.from('trabajo').delete().eq('id_trabajo', existente.id_trabajo)
+        if (error) throw error
+      }
+    }
+  }
+
   const guardarDetallesEdicion = async (id_pedido) => {
     const originalIds = pedidoActivo.detalle_pedido?.map((d) => d.id_detalle) ?? []
     const currentIds = form.detalles.filter((d) => d.id_detalle).map((d) => d.id_detalle)
@@ -198,19 +261,29 @@ export default function Pedidos() {
         })
         .eq('id_detalle', detalle.id_detalle)
       if (error) throw error
+
+      const original = pedidoActivo.detalle_pedido.find((d) => d.id_detalle === detalle.id_detalle)
+      await syncTrabajoAsignaciones(detalle.id_detalle, detalle, original?.trabajo ?? [])
     }
 
     const toInsert = form.detalles.filter((d) => !d.id_detalle)
     if (toInsert.length > 0) {
-      const { error } = await supabase.from('detalle_pedido').insert(
-        toInsert.map((detalle) => ({
-          id_pedido,
-          tipo_prenda: detalle.tipo_prenda,
-          cant_prendas: Number(detalle.cant_prendas) || 0,
-          obs_detalle: detalle.obs_detalle || null,
-        })),
-      )
+      const { data: nuevosDetalles, error } = await supabase
+        .from('detalle_pedido')
+        .insert(
+          toInsert.map((detalle) => ({
+            id_pedido,
+            tipo_prenda: detalle.tipo_prenda,
+            cant_prendas: Number(detalle.cant_prendas) || 0,
+            obs_detalle: detalle.obs_detalle || null,
+          })),
+        )
+        .select('id_detalle')
       if (error) throw error
+
+      for (let i = 0; i < toInsert.length; i += 1) {
+        await syncTrabajoAsignaciones(nuevosDetalles[i].id_detalle, toInsert[i], [])
+      }
     }
   }
 
@@ -275,8 +348,15 @@ export default function Pedidos() {
           obs_detalle: d.obs_detalle || null,
         }))
 
-        const { error: detalleError } = await supabase.from('detalle_pedido').insert(detallesPayload)
+        const { data: nuevosDetalles, error: detalleError } = await supabase
+          .from('detalle_pedido')
+          .insert(detallesPayload)
+          .select('id_detalle')
         if (detalleError) throw detalleError
+
+        for (let i = 0; i < form.detalles.length; i += 1) {
+          await syncTrabajoAsignaciones(nuevosDetalles[i].id_detalle, form.detalles[i], [])
+        }
       }
 
       cerrarModal()
@@ -289,7 +369,7 @@ export default function Pedidos() {
   }
 
   const confirmarEliminar = async () => {
-    if (!pedidoActivo) return
+    if (!pedidoActivo || soloPropios) return
 
     setDeleting(true)
     setDeleteError(null)
@@ -329,9 +409,11 @@ export default function Pedidos() {
     <div className="pedidos-page">
       <div className="pedidos-header">
         <h1>Ingreso y Control de Pedidos</h1>
-        <button type="button" onClick={abrirCrear}>
-          Nuevo pedido
-        </button>
+        {!soloPropios && (
+          <button type="button" onClick={abrirCrear}>
+            Nuevo pedido
+          </button>
+        )}
       </div>
 
       {loading && <p>Cargando pedidos...</p>}
@@ -392,24 +474,28 @@ export default function Pedidos() {
                   >
                     <IconEye />
                   </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    title="Editar"
-                    aria-label="Editar pedido"
-                    onClick={() => abrirEditar(pedido)}
-                  >
-                    <IconPencil />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn-danger"
-                    title="Eliminar"
-                    aria-label="Eliminar pedido"
-                    onClick={() => abrirEliminar(pedido)}
-                  >
-                    <IconTrash />
-                  </button>
+                  {!soloPropios && (
+                    <>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Editar"
+                        aria-label="Editar pedido"
+                        onClick={() => abrirEditar(pedido)}
+                      >
+                        <IconPencil />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        title="Eliminar"
+                        aria-label="Eliminar pedido"
+                        onClick={() => abrirEliminar(pedido)}
+                      >
+                        <IconTrash />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -586,34 +672,66 @@ export default function Pedidos() {
               <fieldset>
                 <legend>Detalle de prendas</legend>
                 {form.detalles.map((detalle, index) => (
-                  <div className="detalle-row" key={detalle.id_detalle ?? index}>
-                    <input
-                      placeholder="Tipo de prenda"
-                      value={detalle.tipo_prenda}
-                      onChange={(e) => handleDetalleChange(index, 'tipo_prenda', e.target.value)}
-                      required
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Cantidad"
-                      value={detalle.cant_prendas}
-                      onChange={(e) => handleDetalleChange(index, 'cant_prendas', e.target.value)}
-                      required
-                    />
-                    <input
-                      placeholder="Observaciones"
-                      value={detalle.obs_detalle}
-                      onChange={(e) => handleDetalleChange(index, 'obs_detalle', e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => removeDetalle(index)}
-                      disabled={form.detalles.length === 1}
-                    >
-                      Quitar
-                    </button>
+                  <div className="detalle-item" key={detalle.id_detalle ?? index}>
+                    <div className="detalle-row">
+                      <input
+                        placeholder="Tipo de prenda"
+                        value={detalle.tipo_prenda}
+                        onChange={(e) => handleDetalleChange(index, 'tipo_prenda', e.target.value)}
+                        required
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Cantidad"
+                        value={detalle.cant_prendas}
+                        onChange={(e) => handleDetalleChange(index, 'cant_prendas', e.target.value)}
+                        required
+                      />
+                      <input
+                        placeholder="Observaciones"
+                        value={detalle.obs_detalle}
+                        onChange={(e) => handleDetalleChange(index, 'obs_detalle', e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => removeDetalle(index)}
+                        disabled={form.detalles.length === 1}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                    <div className="detalle-asignacion">
+                      <label>
+                        Cortadora
+                        <select
+                          value={detalle.id_usu_corte}
+                          onChange={(e) => handleDetalleChange(index, 'id_usu_corte', e.target.value)}
+                        >
+                          <option value="">Sin asignar</option>
+                          {cortadoras.map((u) => (
+                            <option key={u.id_usu} value={u.id_usu}>
+                              {u.nom_usuario} {u.ape_usuario}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Operaria (armado)
+                        <select
+                          value={detalle.id_usu_armado}
+                          onChange={(e) => handleDetalleChange(index, 'id_usu_armado', e.target.value)}
+                        >
+                          <option value="">Sin asignar</option>
+                          {operarias.map((u) => (
+                            <option key={u.id_usu} value={u.id_usu}>
+                              {u.nom_usuario} {u.ape_usuario}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
                 ))}
                 <button type="button" className="link-btn" onClick={addDetalle}>
@@ -678,12 +796,28 @@ export default function Pedidos() {
                 <span className="detalle-value">
                   {pedidoActivo.detalle_pedido?.length ? (
                     <ul className="detalle-prendas-list">
-                      {pedidoActivo.detalle_pedido.map((d) => (
-                        <li key={d.id_detalle}>
-                          {d.cant_prendas}x {d.tipo_prenda}
-                          {d.obs_detalle ? ` — ${d.obs_detalle}` : ''}
-                        </li>
-                      ))}
+                      {pedidoActivo.detalle_pedido.map((d) => {
+                        const trabajoCorte = d.trabajo?.find((t) => t.tipo_trabajo === 'corte')
+                        const trabajoArmado = d.trabajo?.find((t) => t.tipo_trabajo === 'armado')
+                        return (
+                          <li key={d.id_detalle}>
+                            {d.cant_prendas}x {d.tipo_prenda}
+                            {d.obs_detalle ? ` — ${d.obs_detalle}` : ''}
+                            <br />
+                            <small>
+                              Corte:{' '}
+                              {trabajoCorte?.usuario
+                                ? `${trabajoCorte.usuario.nom_usuario} ${trabajoCorte.usuario.ape_usuario} (${trabajoCorte.estado})`
+                                : 'sin asignar'}
+                              {' · '}
+                              Armado:{' '}
+                              {trabajoArmado?.usuario
+                                ? `${trabajoArmado.usuario.nom_usuario} ${trabajoArmado.usuario.ape_usuario} (${trabajoArmado.estado})`
+                                : 'sin asignar'}
+                            </small>
+                          </li>
+                        )
+                      })}
                     </ul>
                   ) : (
                     '—'

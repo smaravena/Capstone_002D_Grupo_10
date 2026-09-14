@@ -20,7 +20,7 @@ export default function Login() {
 
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from?.pathname ?? '/usuarios'
+  const from = location.state?.from?.pathname ?? '/pedidos'
 
   if (!loading && isAuthenticated) {
     return <Navigate to={from} replace />
