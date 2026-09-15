@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { ESTADOS_TRABAJO, TIPO_TRABAJO_LABELS } from '../lib/trabajoConstants'
-import { IconEye } from '../components/Icons'
+import { IconEye, IconTicket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
 
 export default function MisTrabajos() {
@@ -11,6 +11,9 @@ export default function MisTrabajos() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [trabajoActivo, setTrabajoActivo] = useState(null)
+  const [trabajoAFinalizar, setTrabajoAFinalizar] = useState(null)
+  const [finalizando, setFinalizando] = useState(false)
+  const [ticketTrabajo, setTicketTrabajo] = useState(null)
 
   const fetchTrabajos = async () => {
     if (!usuario?.id_usu) return
@@ -37,10 +40,7 @@ export default function MisTrabajos() {
   }, [usuario?.id_usu])
 
   const handleEstadoChange = async (id_trabajo, estado) => {
-    const payload = {
-      estado,
-      fecha_termino: estado === 'terminado' ? new Date().toISOString() : null,
-    }
+    const payload = { estado, fecha_termino: null }
 
     const { error } = await supabase.from('trabajo').update(payload).eq('id_trabajo', id_trabajo)
     if (error) {
@@ -53,8 +53,46 @@ export default function MisTrabajos() {
     )
   }
 
+  const onEstadoSelect = (trabajo, estado) => {
+    if (estado === 'terminado') {
+      setTrabajoAFinalizar(trabajo)
+      return
+    }
+    handleEstadoChange(trabajo.id_trabajo, estado)
+  }
+
+  const cancelarFinalizar = () => setTrabajoAFinalizar(null)
+
+  const confirmarFinalizar = async () => {
+    if (!trabajoAFinalizar) return
+
+    setFinalizando(true)
+    const payload = { estado: 'terminado', fecha_termino: new Date().toISOString() }
+
+    const { error } = await supabase
+      .from('trabajo')
+      .update(payload)
+      .eq('id_trabajo', trabajoAFinalizar.id_trabajo)
+
+    setFinalizando(false)
+
+    if (error) {
+      setLoadError(error.message)
+      setTrabajoAFinalizar(null)
+      return
+    }
+
+    const trabajoFinalizado = { ...trabajoAFinalizar, ...payload }
+    setTrabajos((prev) =>
+      prev.map((t) => (t.id_trabajo === trabajoFinalizado.id_trabajo ? trabajoFinalizado : t)),
+    )
+    setTrabajoAFinalizar(null)
+    setTicketTrabajo(trabajoFinalizado)
+  }
+
   const abrirVer = (trabajo) => setTrabajoActivo(trabajo)
   const cerrarModal = () => setTrabajoActivo(null)
+  const cerrarTicket = () => setTicketTrabajo(null)
 
   return (
     <div className="pedidos-page">
@@ -96,22 +134,26 @@ export default function MisTrabajos() {
                       : '—'}
                   </td>
                   <td>
-                    <select
-                      className="estado-select"
-                      value={trabajo.estado ?? ''}
-                      onChange={(e) => handleEstadoChange(trabajo.id_trabajo, e.target.value)}
-                    >
-                      {!ESTADOS_TRABAJO.includes(trabajo.estado) && (
-                        <option value={trabajo.estado ?? ''} disabled>
-                          {trabajo.estado || 'Sin estado'}
-                        </option>
-                      )}
-                      {ESTADOS_TRABAJO.map((estado) => (
-                        <option key={estado} value={estado}>
-                          {estado}
-                        </option>
-                      ))}
-                    </select>
+                    {trabajo.estado === 'terminado' ? (
+                      <span className="estado-badge estado-badge-terminado">Terminado</span>
+                    ) : (
+                      <select
+                        className="estado-select"
+                        value={trabajo.estado ?? ''}
+                        onChange={(e) => onEstadoSelect(trabajo, e.target.value)}
+                      >
+                        {!ESTADOS_TRABAJO.includes(trabajo.estado) && (
+                          <option value={trabajo.estado ?? ''} disabled>
+                            {trabajo.estado || 'Sin estado'}
+                          </option>
+                        )}
+                        {ESTADOS_TRABAJO.map((estado) => (
+                          <option key={estado} value={estado}>
+                            {estado}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="usuarios-actions">
                     <button
@@ -123,6 +165,17 @@ export default function MisTrabajos() {
                     >
                       <IconEye />
                     </button>
+                    {trabajo.estado === 'terminado' && (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Ver ticket"
+                        aria-label="Ver ticket de finalización"
+                        onClick={() => setTicketTrabajo(trabajo)}
+                      >
+                        <IconTicket />
+                      </button>
+                    )}
                   </td>
                 </tr>
               )
@@ -204,6 +257,85 @@ export default function MisTrabajos() {
             </div>
             <div className="modal-actions">
               <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {trabajoAFinalizar && (
+        <div className="modal-overlay" onClick={cancelarFinalizar}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Finalizar trabajo</h2>
+            <p>¿Estás seguro de finalizar el trabajo?</p>
+            <p className="modal-hint">
+              Una vez finalizado no podrás volver a cambiar su estado.
+            </p>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={cancelarFinalizar}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={finalizando}
+                onClick={confirmarFinalizar}
+              >
+                {finalizando ? 'Finalizando...' : 'Finalizar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ticketTrabajo && (
+        <div className="modal-overlay" onClick={cerrarTicket}>
+          <div className="modal-card ticket-card" onClick={(e) => e.stopPropagation()}>
+            <div className="ticket-check">✓</div>
+            <h2>Trabajo finalizado</h2>
+            <p className="ticket-numero">Ticket #{ticketTrabajo.id_trabajo}</p>
+
+            <div className="usuario-detalle">
+              <div className="detalle-field">
+                <span className="detalle-label">Pedido</span>
+                <span className="detalle-value">
+                  #{ticketTrabajo.detalle?.pedido?.id_pedido ?? '—'}
+                </span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Cliente</span>
+                <span className="detalle-value">
+                  {ticketTrabajo.detalle?.pedido?.cliente?.nom_cli ?? '—'}
+                </span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Prenda</span>
+                <span className="detalle-value">
+                  {ticketTrabajo.detalle
+                    ? `${ticketTrabajo.detalle.cant_prendas}x ${ticketTrabajo.detalle.tipo_prenda}`
+                    : '—'}
+                </span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Tarea</span>
+                <span className="detalle-value">
+                  {TIPO_TRABAJO_LABELS[ticketTrabajo.tipo_trabajo] ?? ticketTrabajo.tipo_trabajo}
+                </span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Fecha finalización</span>
+                <span className="detalle-value">
+                  {ticketTrabajo.fecha_termino
+                    ? new Date(ticketTrabajo.fecha_termino).toLocaleString()
+                    : '—'}
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={cerrarTicket}>
                 Cerrar
               </button>
             </div>

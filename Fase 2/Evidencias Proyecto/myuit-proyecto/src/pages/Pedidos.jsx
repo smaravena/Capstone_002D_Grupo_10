@@ -28,9 +28,18 @@ const emptyForm = () => ({
   fec_ini: '',
   fec_ter: '',
   estado_pedido: ESTADOS_PEDIDO[0],
-  id_usu_responsable: '',
   detalles: [emptyDetalle()],
 })
+
+const getResponsables = (pedido) => {
+  const nombres = new Set()
+  pedido.detalle_pedido?.forEach((d) => {
+    d.trabajo?.forEach((t) => {
+      if (t.usuario) nombres.add(`${t.usuario.nom_usuario} ${t.usuario.ape_usuario}`)
+    })
+  })
+  return [...nombres]
+}
 
 export default function Pedidos() {
   const { usuario, role } = useAuth()
@@ -53,16 +62,42 @@ export default function Pedidos() {
   const cortadoras = usuarios.filter((u) => u.rol_usu === ROLES.CORTADORA)
   const operarias = usuarios.filter((u) => u.rol_usu === ROLES.OPERARIA)
 
+  const fetchPedidoIdsAsignados = async () => {
+    if (!usuario?.id_usu) return []
+
+    const { data, error } = await supabase
+      .from('trabajo')
+      .select('detalle:id_detalle ( id_pedido )')
+      .eq('id_usu', usuario.id_usu)
+
+    if (error) {
+      setLoadError(error.message)
+      return []
+    }
+
+    const ids = new Set()
+    data?.forEach((t) => {
+      if (t.detalle?.id_pedido) ids.add(t.detalle.id_pedido)
+    })
+    return [...ids]
+  }
+
   const fetchPedidos = async () => {
     let query = supabase
       .from('pedido')
       .select(
-        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), responsable:id_usu_responsable ( id_usu, nom_usuario, ape_usuario ), detalle_pedido ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
+        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), detalle_pedido ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
       )
       .order('created_at', { ascending: false })
 
     if (soloPropios) {
-      query = query.eq('id_usu_responsable', usuario?.id_usu ?? -1)
+      const idsAsignados = await fetchPedidoIdsAsignados()
+      if (idsAsignados.length === 0) {
+        setLoadError(null)
+        setPedidos([])
+        return
+      }
+      query = query.in('id_pedido', idsAsignados)
     }
 
     const { data, error } = await query
@@ -141,7 +176,6 @@ export default function Pedidos() {
       fec_ini: pedido.fec_ini ?? '',
       fec_ter: pedido.fec_ter ?? '',
       estado_pedido: ESTADOS_PEDIDO.includes(pedido.estado_pedido) ? pedido.estado_pedido : ESTADOS_PEDIDO[0],
-      id_usu_responsable: pedido.responsable?.id_usu ? String(pedido.responsable.id_usu) : '',
       detalles: pedido.detalle_pedido?.length
         ? pedido.detalle_pedido.map((d) => {
             const trabajoCorte = d.trabajo?.find((t) => t.tipo_trabajo === 'corte')
@@ -321,7 +355,6 @@ export default function Pedidos() {
         fec_ini: form.fec_ini || null,
         fec_ter: form.fec_ter || null,
         estado_pedido: form.estado_pedido,
-        id_usu_responsable: form.id_usu_responsable || null,
       }
 
       if (modo === 'editar' && pedidoActivo) {
@@ -442,9 +475,7 @@ export default function Pedidos() {
                 <td>{pedido.fec_ter ?? '—'}</td>
                 <td>{pedido.detalle_pedido?.length ?? 0}</td>
                 <td>
-                  {pedido.responsable
-                    ? `${pedido.responsable.nom_usuario} ${pedido.responsable.ape_usuario}`
-                    : '—'}
+                  {getResponsables(pedido).length ? getResponsables(pedido).join(', ') : '—'}
                 </td>
                 <td>
                   <select
@@ -653,20 +684,6 @@ export default function Pedidos() {
                     ))}
                   </select>
                 </label>
-                <label>
-                  Responsable
-                  <select
-                    value={form.id_usu_responsable}
-                    onChange={(e) => setForm((prev) => ({ ...prev, id_usu_responsable: e.target.value }))}
-                  >
-                    <option value="">Sin asignar</option>
-                    {usuarios.map((u) => (
-                      <option key={u.id_usu} value={u.id_usu}>
-                        {u.nom_usuario} {u.ape_usuario}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </fieldset>
 
               <fieldset>
@@ -784,10 +801,10 @@ export default function Pedidos() {
                 <span className="detalle-value">{pedidoActivo.estado_pedido ?? '—'}</span>
               </div>
               <div className="detalle-field">
-                <span className="detalle-label">Responsable</span>
+                <span className="detalle-label">Responsable(s)</span>
                 <span className="detalle-value">
-                  {pedidoActivo.responsable
-                    ? `${pedidoActivo.responsable.nom_usuario} ${pedidoActivo.responsable.ape_usuario}`
+                  {getResponsables(pedidoActivo).length
+                    ? getResponsables(pedidoActivo).join(', ')
                     : '—'}
                 </span>
               </div>

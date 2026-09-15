@@ -503,6 +503,45 @@
   font-weight: 600;
 }
 
+.estado-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.estado-badge-terminado {
+  background: #1f9d55;
+  color: #fff;
+}
+
+.ticket-card {
+  text-align: center;
+}
+
+.ticket-check {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #1f9d55;
+  color: #fff;
+  font-size: 26px;
+  line-height: 48px;
+}
+
+.ticket-numero {
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  margin: -8px 0 16px;
+}
+
+.ticket-card .usuario-detalle {
+  text-align: left;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

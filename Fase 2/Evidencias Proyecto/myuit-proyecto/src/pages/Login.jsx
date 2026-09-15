@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import Logo from '../components/Logo'
 import { EMAIL_REGEX } from '../lib/validators'
+import { getHomeRoute } from '../lib/roles'
 
 export default function Login() {
-  const { signIn, isAuthenticated, loading } = useAuth()
+  const { signIn, isAuthenticated, loading, role } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -18,12 +19,8 @@ export default function Login() {
   const [forgotError, setForgotError] = useState(null)
   const [forgotSubmitting, setForgotSubmitting] = useState(false)
 
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = location.state?.from?.pathname ?? '/pedidos'
-
   if (!loading && isAuthenticated) {
-    return <Navigate to={from} replace />
+    return <Navigate to={getHomeRoute(role)} replace />
   }
 
   const validate = () => {
@@ -46,7 +43,6 @@ export default function Login() {
     setSubmitting(true)
     try {
       await signIn(email, password)
-      navigate(from, { replace: true })
     } catch (err) {
       setError('Correo o contraseña incorrectos.')
       console.error(err)

@@ -1,6 +1,12 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { ROLES_MODULO_USUARIOS, ROLES_MODULO_CLIENTES, ROLES_MODULO_MIS_TRABAJOS } from '../lib/roles'
+import {
+  ROLES_MODULO_USUARIOS,
+  ROLES_MODULO_CLIENTES,
+  ROLES_MODULO_PEDIDOS,
+  ROLES_MODULO_MIS_TRABAJOS,
+  getHomeRoute,
+} from '../lib/roles'
 import Logo from './Logo'
 
 export default function Layout() {
@@ -11,6 +17,8 @@ export default function Layout() {
     ROLES_MODULO_USUARIOS.length === 0 || ROLES_MODULO_USUARIOS.includes(role)
   const puedeVerClientes =
     ROLES_MODULO_CLIENTES.length === 0 || ROLES_MODULO_CLIENTES.includes(role)
+  const puedeVerPedidos =
+    ROLES_MODULO_PEDIDOS.length === 0 || ROLES_MODULO_PEDIDOS.includes(role)
   const puedeVerMisTrabajos = ROLES_MODULO_MIS_TRABAJOS.includes(role)
 
   const handleSignOut = async () => {
@@ -21,7 +29,7 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link to="/" className="app-title" title="Ir a la página de inicio">
+        <Link to={getHomeRoute(role)} className="app-title" title="Ir a la página de inicio">
           <Logo size={44} />
         </Link>
         <nav className="app-nav">
@@ -35,9 +43,11 @@ export default function Layout() {
               Clientes
             </NavLink>
           )}
-          <NavLink to="/pedidos" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Pedidos
-          </NavLink>
+          {puedeVerPedidos && (
+            <NavLink to="/pedidos" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Pedidos
+            </NavLink>
+          )}
           {puedeVerMisTrabajos && (
             <NavLink to="/mis-trabajos" className={({ isActive }) => (isActive ? 'active' : '')}>
               Mis trabajos
