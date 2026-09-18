@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 import SocialIcons from '../components/SocialIcons'
 import Carousel from '../components/Carousel'
+import { IconShirt, IconJacket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabaseClient'
 import fotoTaller1 from '../assets/foto_taller1.jpeg'
 import fotoTaller2 from '../assets/foto_taller2.jpeg'
 import fotoTaller3 from '../assets/foto_taller3.jpeg'
@@ -47,6 +49,12 @@ const FEATURES = [
   },
 ]
 
+const PRECIO_CATEGORIAS = {
+  'Poleras Deportivas': { icon: IconShirt, color: 'var(--blue)' },
+  'Poleras de Piqué': { icon: IconShirt, color: 'var(--purple)' },
+  'Buzos Escolares': { icon: IconJacket, color: 'var(--orange)' },
+}
+
 const FAQ_ITEMS = [
   {
     question: '¿Qué es Mil y Una Ideas?',
@@ -73,9 +81,43 @@ const FAQ_ITEMS = [
   },
 ]
 
+const formatPrecio = (valor) =>
+  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(valor)
+
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0)
+  const [precios, setPrecios] = useState([])
+  const [preciosError, setPreciosError] = useState(false)
   const { isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    let activo = true
+    supabase
+      .from('precio_prenda')
+      .select('tipo_prenda, talla, precio')
+      .order('id_precio', { ascending: true })
+      .then(({ data, error }) => {
+        if (!activo) return
+        if (error) {
+          setPreciosError(true)
+          return
+        }
+        setPrecios(data ?? [])
+      })
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  const categoriasPrecio = precios.reduce((grupos, fila) => {
+    const grupo = grupos.find((g) => g.tipo_prenda === fila.tipo_prenda)
+    if (grupo) {
+      grupo.tallas.push(fila)
+    } else {
+      grupos.push({ tipo_prenda: fila.tipo_prenda, tallas: [fila] })
+    }
+    return grupos
+  }, [])
 
   return (
     <div className="landing">
@@ -85,6 +127,7 @@ export default function Landing() {
         </Link>
         <nav className="landing-nav">
           <a href="#servicios">Servicios</a>
+          <a href="#precios">Lista de precios</a>
           <a href="#taller">Nuestro taller</a>
           <a href="#faq">Preguntas frecuentes</a>
           <a href="#contacto">Contacto</a>
@@ -125,6 +168,43 @@ export default function Landing() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section id="precios" className="landing-precios">
+        <h2>Lista de precios</h2>
+        <p className="precios-subtitle">Precios fijos por talla para prendas escolares.</p>
+        {preciosError && (
+          <p className="precios-error">No pudimos cargar la lista de precios. Intenta nuevamente más tarde.</p>
+        )}
+        {!preciosError && categoriasPrecio.length > 0 && (
+          <div className="precios-grid">
+            {categoriasPrecio.map((categoria) => {
+              const config = PRECIO_CATEGORIAS[categoria.tipo_prenda] ?? {}
+              const Icono = config.icon
+              return (
+                <div
+                  className="precio-card"
+                  key={categoria.tipo_prenda}
+                  style={{ '--card-color': config.color ?? 'var(--accent)' }}
+                >
+                  <div className="precio-card-header">
+                    {Icono && <Icono />}
+                    <h3>{categoria.tipo_prenda}</h3>
+                  </div>
+                  <ul className="precio-list">
+                    {categoria.tallas.map((fila) => (
+                      <li className="precio-row" key={fila.talla}>
+                        <span className="precio-talla">{fila.talla}</span>
+                        <span className="precio-leader" />
+                        <span className="precio-monto">{formatPrecio(fila.precio)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section id="taller" className="landing-gallery">

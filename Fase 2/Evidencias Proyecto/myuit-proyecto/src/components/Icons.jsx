@@ -21,6 +21,19 @@ export const IconTicket = () => (
   </svg>
 )
 
+export const IconShirt = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 3 4 6l2 3 2-1v11h8V8l2 1 2-3-4-3-2 2h-4L8 3Z" />
+  </svg>
+)
+
+export const IconJacket = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 3 4 6l2 3 2-1v11h2V8m4 0v11h2V8l2 1 2-3-4-3-2 2h-4L8 3Z" />
+    <path d="M12 8v11" />
+  </svg>
+)
+
 export const IconTrash = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 6h18" />

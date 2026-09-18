@@ -10,11 +10,13 @@ import Pedidos from './pages/Pedidos'
 import Usuarios from './pages/Usuarios'
 import Clientes from './pages/Clientes'
 import MisTrabajos from './pages/MisTrabajos'
+import Precios from './pages/Precios'
 import {
   ROLES_MODULO_PEDIDOS,
   ROLES_MODULO_USUARIOS,
   ROLES_MODULO_CLIENTES,
   ROLES_MODULO_MIS_TRABAJOS,
+  ROLES_MODULO_PRECIOS,
 } from './lib/roles'
 import './App.css'
 
@@ -64,6 +66,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={ROLES_MODULO_MIS_TRABAJOS}>
                   <MisTrabajos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/precios"
+              element={
+                <ProtectedRoute allowedRoles={ROLES_MODULO_PRECIOS}>
+                  <Precios />
                 </ProtectedRoute>
               }
             />

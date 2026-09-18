@@ -833,6 +833,99 @@
   line-height: 145%;
 }
 
+.landing-precios {
+  padding: 56px 48px;
+  text-align: center;
+  background: var(--yellow-soft);
+
+  @media (max-width: 800px) {
+    padding: 40px 24px;
+  }
+}
+
+.landing-precios h2 {
+  margin-bottom: 8px;
+}
+
+.precios-subtitle {
+  color: var(--text);
+  margin-bottom: 32px;
+}
+
+.precios-error {
+  color: #d9376e;
+}
+
+.precios-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.precio-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: left;
+}
+
+.precio-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 3px solid var(--card-color, var(--accent));
+  color: var(--card-color, var(--accent));
+}
+
+.precio-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.precio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.precio-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.precio-talla {
+  flex-shrink: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.precio-leader {
+  flex-grow: 1;
+  border-bottom: 2px dotted var(--border);
+  margin-bottom: 4px;
+}
+
+.precio-monto {
+  flex-shrink: 0;
+  color: var(--text-h);
+  font-weight: 700;
+  font-size: 15px;
+}
+
 .landing-gallery {
   padding: 56px 48px;
   text-align: center;

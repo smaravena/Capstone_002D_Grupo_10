@@ -19,6 +19,10 @@ export const ROLES_MODULO_USUARIOS = [ROLES.JEFA_TALLER]
 // Cortadora y Operaria no tienen acceso a clientes.
 export const ROLES_MODULO_CLIENTES = [ROLES.JEFA_TALLER]
 
+// Roles que pueden entrar al módulo de precios (lista de precios fija de
+// prendas escolares que se muestra en el landing público).
+export const ROLES_MODULO_PRECIOS = [ROLES.JEFA_TALLER]
+
 // Roles que pueden entrar a "Mis trabajos" (tareas de corte/armado
 // asignadas de forma individual en la tabla `trabajo`).
 export const ROLES_MODULO_MIS_TRABAJOS = [ROLES.CORTADORA, ROLES.OPERARIA]
