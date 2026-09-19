@@ -154,7 +154,7 @@ export default function Landing() {
       </section>
 
       <section id="servicios" className="landing-features">
-        <h2>Lo que hacemos</h2>
+        <h2 className="precios-title-marker">Lo que hacemos</h2>
         <div className="landing-features-grid">
           {FEATURES.map((f) => (
             <div className="feature-card" key={f.title} style={{ '--card-color': f.color }}>
@@ -167,7 +167,7 @@ export default function Landing() {
       </section>
 
       <section id="precios" className="landing-precios">
-        <h2>Lista de precios</h2>
+        <h2 className="precios-title-marker">Lista de precios</h2>
         <p className="precios-subtitle">Precios fijos por talla para prendas escolares.</p>
         {preciosError && (
           <p className="precios-error">No pudimos cargar la lista de precios. Intenta nuevamente más tarde.</p>
@@ -203,7 +203,7 @@ export default function Landing() {
       </section>
 
       <section id="taller" className="landing-gallery">
-        <h2>Nuestro taller</h2>
+        <h2 className="precios-title-marker">Nuestro taller</h2>
         <p className="gallery-subtitle">Un vistazo al espacio donde cobran vida las prendas.</p>
         <Carousel images={FOTOS_TALLER} />
       </section>
