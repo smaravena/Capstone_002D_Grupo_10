@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import Logo from '../components/Logo'
@@ -8,6 +8,8 @@ import { getHomeRoute } from '../lib/roles'
 
 export default function Login() {
   const { signIn, isAuthenticated, loading, role } = useAuth()
+  const navigate = useNavigate()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -18,6 +20,11 @@ export default function Login() {
   const [forgotSent, setForgotSent] = useState(false)
   const [forgotError, setForgotError] = useState(null)
   const [forgotSubmitting, setForgotSubmitting] = useState(false)
+
+  const [showSetupModal, setShowSetupModal] = useState(false)
+  const [setupEmail, setSetupEmail] = useState('')
+  const [setupError, setSetupError] = useState(null)
+  const [setupSubmitting, setSetupSubmitting] = useState(false)
 
   if (!loading && isAuthenticated) {
     return <Navigate to={getHomeRoute(role)} replace />
@@ -99,6 +106,54 @@ export default function Login() {
     }
   }
 
+  const abrirModalSetup = () => {
+    setSetupEmail(email)
+    setSetupError(null)
+    setShowSetupModal(true)
+  }
+
+  const cerrarModalSetup = () => {
+    setShowSetupModal(false)
+  }
+
+  const handleSetupSubmit = async (event) => {
+    event.preventDefault()
+
+    const correo = setupEmail.trim()
+    if (!correo || !EMAIL_REGEX.test(correo)) {
+      setSetupError('Ingresa un correo electrónico válido.')
+      return
+    }
+
+    setSetupError(null)
+    setSetupSubmitting(true)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('usuario_estado_login', {
+        p_correo: correo,
+      })
+      if (rpcError) throw rpcError
+
+      const estado = Array.isArray(data) ? data[0] : data
+
+      if (!estado?.existe) {
+        setSetupError('Este correo no está registrado en el sistema.')
+        return
+      }
+
+      if (estado.tiene_password) {
+        setSetupError('Este correo ya tiene una contraseña definida. Usa "¿Olvidaste tu contraseña?" si la perdiste.')
+        return
+      }
+
+      navigate('/establecer-password', { state: { correo } })
+    } catch (err) {
+      setSetupError(err.message ?? 'No se pudo validar el correo.')
+      console.error(err)
+    } finally {
+      setSetupSubmitting(false)
+    }
+  }
+
   return (
     <div className="login-screen">
       <Link to="/" className="back-arrow" title="Volver al inicio" aria-label="Volver al inicio">
@@ -130,6 +185,10 @@ export default function Login() {
 
         <button type="button" className="forgot-password" onClick={abrirModalOlvido}>
           ¿Olvidaste tu contraseña?
+        </button>
+
+        <button type="button" className="forgot-password" onClick={abrirModalSetup}>
+          ¿Primera vez? Establece tu contraseña
         </button>
 
         {error && <p className="form-error">{error}</p>}
@@ -176,6 +235,40 @@ export default function Login() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {showSetupModal && (
+        <div className="modal-overlay" onClick={cerrarModalSetup}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Establecer contraseña</h2>
+            <p className="modal-hint">
+              Ingresa el correo con el que fuiste registrado. Verificaremos que exista en el sistema y que
+              aún no tenga una contraseña.
+            </p>
+
+            <form className="usuario-form" onSubmit={handleSetupSubmit} noValidate>
+              <label htmlFor="setup-email">Correo electrónico</label>
+              <input
+                id="setup-email"
+                type="email"
+                autoComplete="email"
+                value={setupEmail}
+                onChange={(e) => setSetupEmail(e.target.value)}
+              />
+
+              {setupError && <p className="form-error">{setupError}</p>}
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={cerrarModalSetup}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={setupSubmitting}>
+                  {setupSubmitting ? 'Validando...' : 'Continuar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
