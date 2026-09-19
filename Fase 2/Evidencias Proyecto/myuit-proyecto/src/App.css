@@ -869,8 +869,8 @@
 }
 
 .precio-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card-color, var(--accent)) 8%, var(--surface));
+  border: 2px solid var(--card-color, var(--border));
   border-radius: 12px;
   padding: 20px;
   text-align: left;
@@ -888,8 +888,10 @@
 
 .precio-card-header h3 {
   margin: 0;
-  font-size: 16px;
-  color: var(--text-h);
+  font-family: var(--heading-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--card-color, var(--text-h));
 }
 
 .precio-list {
@@ -924,6 +926,39 @@
   color: var(--text-h);
   font-weight: 700;
   font-size: 15px;
+}
+
+.precios-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.precio-card-admin {
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.precio-card-admin:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.precio-card-resumen {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.modal-actions-split {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-actions-split .modal-actions {
+  margin-left: auto;
 }
 
 .landing-gallery {

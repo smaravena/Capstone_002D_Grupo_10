@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { IconPencil, IconTrash } from '../components/Icons'
+import { ICONOS_CATEGORIA, COLORES_CATEGORIA, getIconoCategoria } from '../lib/preciosCategorias'
 
-const emptyForm = () => ({ tipo_prenda: '', talla: '', precio: '' })
+const NUEVA_TALLA = '__nueva_talla__'
+
+const emptyNuevaCategoria = () => ({
+  nombre: '',
+  icono: Object.keys(ICONOS_CATEGORIA)[0],
+  color: Object.keys(COLORES_CATEGORIA)[0],
+  talla: '',
+  precio: '',
+})
 
 const formatPrecio = (valor) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(valor)
@@ -12,18 +20,28 @@ export default function Precios() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
-  const [modo, setModo] = useState(null) // 'crear' | 'editar' | 'eliminar' | null
-  const [precioActivo, setPrecioActivo] = useState(null)
-  const [form, setForm] = useState(emptyForm())
+  const [modo, setModo] = useState(null) // 'categoria' | 'nuevaCategoria' | 'eliminar' | null
+
+  // Modal de categoría
+  const [categoriaActiva, setCategoriaActiva] = useState(null)
+  const [tallaSeleccionada, setTallaSeleccionada] = useState('')
+  const [tallaNueva, setTallaNueva] = useState('')
+  const [precioInput, setPrecioInput] = useState('')
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Modal de nueva categoría
+  const [nuevaCategoriaForm, setNuevaCategoriaForm] = useState(emptyNuevaCategoria())
+
+  // Modal de eliminar
+  const [precioActivo, setPrecioActivo] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
   const fetchPrecios = async () => {
     const { data, error } = await supabase
       .from('precio_prenda')
-      .select('id_precio, tipo_prenda, talla, precio')
+      .select('id_precio, talla, precio, categoria_prenda(id_categoria, nombre, icono, color)')
       .order('id_precio', { ascending: true })
 
     if (error) {
@@ -39,35 +57,155 @@ export default function Precios() {
     fetchPrecios().then(() => setLoading(false))
   }, [])
 
-  const abrirCrear = () => {
-    setForm(emptyForm())
+  const categorias = useMemo(() => {
+    const grupos = []
+    precios.forEach((fila) => {
+      const categoria = fila.categoria_prenda
+      if (!categoria) return
+      const grupo = grupos.find((g) => g.id_categoria === categoria.id_categoria)
+      const talla = { id_precio: fila.id_precio, talla: fila.talla, precio: fila.precio }
+      if (grupo) {
+        grupo.tallas.push(talla)
+      } else {
+        grupos.push({ ...categoria, tallas: [talla] })
+      }
+    })
+    return grupos
+  }, [precios])
+
+  const cerrarModal = () => {
+    setModo(null)
+    setCategoriaActiva(null)
+    setTallaSeleccionada('')
+    setTallaNueva('')
+    setPrecioInput('')
     setFormError(null)
     setPrecioActivo(null)
-    setModo('crear')
+    setDeleteError(null)
   }
 
-  const abrirEditar = (precio) => {
-    setForm({
-      tipo_prenda: precio.tipo_prenda ?? '',
-      talla: precio.talla ?? '',
-      precio: precio.precio ?? '',
-    })
+  const abrirCategoria = (categoria) => {
+    setCategoriaActiva(categoria)
+    const primera = categoria.tallas[0]
+    setTallaSeleccionada(primera ? primera.talla : NUEVA_TALLA)
+    setTallaNueva('')
+    setPrecioInput(primera ? String(primera.precio) : '')
     setFormError(null)
-    setPrecioActivo(precio)
-    setModo('editar')
+    setModo('categoria')
+  }
+
+  const abrirNuevaCategoria = () => {
+    setNuevaCategoriaForm(emptyNuevaCategoria())
+    setFormError(null)
+    setModo('nuevaCategoria')
+  }
+
+  const handleSeleccionTalla = (value) => {
+    setTallaSeleccionada(value)
+    setTallaNueva('')
+    setFormError(null)
+    if (value === NUEVA_TALLA) {
+      setPrecioInput('')
+    } else {
+      const fila = categoriaActiva?.tallas.find((t) => t.talla === value)
+      setPrecioInput(fila ? String(fila.precio) : '')
+    }
+  }
+
+  const filaSeleccionada = useMemo(() => {
+    if (!categoriaActiva || tallaSeleccionada === NUEVA_TALLA) return null
+    return categoriaActiva.tallas.find((t) => t.talla === tallaSeleccionada) ?? null
+  }, [categoriaActiva, tallaSeleccionada])
+
+  const guardarPrecioCategoria = async (event) => {
+    event.preventDefault()
+    setFormError(null)
+
+    const esNueva = tallaSeleccionada === NUEVA_TALLA
+    const talla = (esNueva ? tallaNueva : tallaSeleccionada).trim()
+    const precio = Number(precioInput)
+
+    if (!talla) {
+      setFormError('Ingresa el nombre de la talla.')
+      return
+    }
+    if (!Number.isFinite(precio) || precio <= 0) {
+      setFormError('Ingresa un precio válido, mayor a 0.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      if (esNueva) {
+        const { error } = await supabase
+          .from('precio_prenda')
+          .insert({ id_categoria: categoriaActiva.id_categoria, talla, precio })
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('precio_prenda')
+          .update({ precio })
+          .eq('id_precio', filaSeleccionada.id_precio)
+        if (error) throw error
+      }
+
+      await fetchPrecios()
+      cerrarModal()
+    } catch (err) {
+      setFormError(err.message ?? 'No se pudo guardar el precio.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSubmitNuevaCategoria = async (event) => {
+    event.preventDefault()
+    setFormError(null)
+
+    const nombre = nuevaCategoriaForm.nombre.trim()
+    const talla = nuevaCategoriaForm.talla.trim()
+    const precio = Number(nuevaCategoriaForm.precio)
+
+    if (!nombre || !talla) {
+      setFormError('El nombre de la categoría y la talla son obligatorios.')
+      return
+    }
+    if (!Number.isFinite(precio) || precio <= 0) {
+      setFormError('Ingresa un precio válido, mayor a 0.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const { data: nuevaCategoria, error: errorCategoria } = await supabase
+        .from('categoria_prenda')
+        .insert({
+          nombre,
+          icono: nuevaCategoriaForm.icono,
+          color: COLORES_CATEGORIA[nuevaCategoriaForm.color].value,
+        })
+        .select('id_categoria')
+        .single()
+      if (errorCategoria) throw errorCategoria
+
+      const { error: errorPrecio } = await supabase
+        .from('precio_prenda')
+        .insert({ id_categoria: nuevaCategoria.id_categoria, talla, precio })
+      if (errorPrecio) throw errorPrecio
+
+      await fetchPrecios()
+      cerrarModal()
+    } catch (err) {
+      setFormError(err.message ?? 'No se pudo crear la categoría.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const abrirEliminar = (precio) => {
     setPrecioActivo(precio)
     setDeleteError(null)
     setModo('eliminar')
-  }
-
-  const cerrarModal = () => {
-    setModo(null)
-    setPrecioActivo(null)
-    setFormError(null)
-    setDeleteError(null)
   }
 
   const confirmarEliminar = async () => {
@@ -82,58 +220,16 @@ export default function Precios() {
       setDeleteError(error.message)
       return
     }
-    setPrecios((prev) => prev.filter((p) => p.id_precio !== precioActivo.id_precio))
+    await fetchPrecios()
     cerrarModal()
-  }
-
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    setFormError(null)
-
-    const tipo_prenda = form.tipo_prenda.trim()
-    const talla = form.talla.trim()
-    const precio = Number(form.precio)
-
-    if (!tipo_prenda || !talla) {
-      setFormError('El tipo de prenda y la talla son obligatorios.')
-      return
-    }
-
-    if (!Number.isFinite(precio) || precio <= 0) {
-      setFormError('Ingresa un precio válido, mayor a 0.')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      const payload = { tipo_prenda, talla, precio }
-
-      if (modo === 'crear') {
-        const { error } = await supabase.from('precio_prenda').insert(payload)
-        if (error) throw error
-      } else if (modo === 'editar' && precioActivo) {
-        const { error } = await supabase
-          .from('precio_prenda')
-          .update(payload)
-          .eq('id_precio', precioActivo.id_precio)
-        if (error) throw error
-      }
-
-      cerrarModal()
-      await fetchPrecios()
-    } catch (err) {
-      setFormError(err.message ?? 'No se pudo guardar el precio.')
-    } finally {
-      setSubmitting(false)
-    }
   }
 
   return (
     <div className="precios-page">
       <div className="usuarios-header">
         <h1>Lista de precios</h1>
-        <button type="button" onClick={abrirCrear}>
-          Nueva línea de precio
+        <button type="button" onClick={abrirNuevaCategoria}>
+          Nueva categoría
         </button>
       </div>
 
@@ -141,77 +237,147 @@ export default function Precios() {
       {loadError && <p className="form-error">{loadError}</p>}
 
       {!loading && !loadError && (
-        <table className="usuarios-table">
-          <thead>
-            <tr>
-              <th>Tipo de prenda</th>
-              <th>Talla</th>
-              <th>Precio</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {precios.map((precio) => (
-              <tr key={precio.id_precio}>
-                <td>{precio.tipo_prenda}</td>
-                <td>{precio.talla}</td>
-                <td>{formatPrecio(precio.precio)}</td>
-                <td className="usuarios-actions">
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    title="Editar"
-                    aria-label="Editar precio"
-                    onClick={() => abrirEditar(precio)}
-                  >
-                    <IconPencil />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn-danger"
-                    title="Eliminar"
-                    aria-label="Eliminar precio"
-                    onClick={() => abrirEliminar(precio)}
-                  >
-                    <IconTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {precios.length === 0 && (
-              <tr>
-                <td colSpan={4}>Todavía no hay precios registrados.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <div className="precios-admin-grid">
+          {categorias.map((categoria) => {
+            const Icono = getIconoCategoria(categoria.icono)
+            const montos = categoria.tallas.map((t) => t.precio)
+            const min = Math.min(...montos)
+            const max = Math.max(...montos)
+            return (
+              <button
+                type="button"
+                key={categoria.id_categoria}
+                className="precio-card precio-card-admin"
+                style={{ '--card-color': categoria.color ?? 'var(--accent)' }}
+                onClick={() => abrirCategoria(categoria)}
+              >
+                <div className="precio-card-header">
+                  <Icono />
+                  <h3>{categoria.nombre}</h3>
+                </div>
+                <p className="precio-card-resumen">
+                  {categoria.tallas.length} {categoria.tallas.length === 1 ? 'talla' : 'tallas'} ·{' '}
+                  {min === max ? formatPrecio(min) : `${formatPrecio(min)} – ${formatPrecio(max)}`}
+                </p>
+              </button>
+            )
+          })}
+          {categorias.length === 0 && <p>Todavía no hay precios registrados.</p>}
+        </div>
       )}
 
-      {(modo === 'crear' || modo === 'editar') && (
+      {modo === 'categoria' && categoriaActiva && (
+        <div className="modal-overlay" onClick={cerrarModal}>
+          <div className="modal-card modal-card-lg" onClick={(e) => e.stopPropagation()}>
+            <h2>{categoriaActiva.nombre}</h2>
+            <form className="usuario-form" onSubmit={guardarPrecioCategoria}>
+              <label>
+                Talla
+                <select value={tallaSeleccionada} onChange={(e) => handleSeleccionTalla(e.target.value)}>
+                  {categoriaActiva.tallas.map((fila) => (
+                    <option key={fila.talla} value={fila.talla}>
+                      {fila.talla}
+                    </option>
+                  ))}
+                  <option value={NUEVA_TALLA}>+ Agregar nueva talla...</option>
+                </select>
+              </label>
+
+              {tallaSeleccionada === NUEVA_TALLA && (
+                <label>
+                  Nombre de la nueva talla
+                  <input
+                    value={tallaNueva}
+                    onChange={(e) => setTallaNueva(e.target.value)}
+                    placeholder="Ej: Talla 14 y 16"
+                    required
+                  />
+                </label>
+              )}
+
+              <label>
+                Precio actual (CLP)
+                <input
+                  type="number"
+                  min="1000"
+                  step="1000"
+                  value={precioInput}
+                  onChange={(e) => setPrecioInput(e.target.value)}
+                  required
+                />
+              </label>
+
+              {formError && <p className="form-error">{formError}</p>}
+
+              <div className="modal-actions modal-actions-split">
+                {filaSeleccionada && (
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => abrirEliminar(filaSeleccionada)}
+                  >
+                    Eliminar talla
+                  </button>
+                )}
+                <div className="modal-actions">
+                  <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                    Cerrar
+                  </button>
+                  <button type="submit" disabled={submitting}>
+                    {submitting ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modo === 'nuevaCategoria' && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>{modo === 'crear' ? 'Nueva línea de precio' : 'Editar precio'}</h2>
-            <form className="usuario-form" onSubmit={handleSubmit}>
+            <h2>Nueva categoría</h2>
+            <form className="usuario-form" onSubmit={handleSubmitNuevaCategoria}>
               <label>
-                Tipo de prenda
+                Nombre de la categoría
                 <input
-                  list="tipos-prenda"
-                  value={form.tipo_prenda}
-                  onChange={(e) => setForm((prev) => ({ ...prev, tipo_prenda: e.target.value }))}
+                  value={nuevaCategoriaForm.nombre}
+                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, nombre: e.target.value }))}
                   placeholder="Ej: Buzos Escolares"
                   required
                 />
-                <datalist id="tipos-prenda">
-                  {[...new Set(precios.map((p) => p.tipo_prenda))].map((tipo) => (
-                    <option key={tipo} value={tipo} />
+              </label>
+              <label>
+                Icono
+                <select
+                  value={nuevaCategoriaForm.icono}
+                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, icono: e.target.value }))}
+                >
+                  {Object.entries(ICONOS_CATEGORIA).map(([key, { label }]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
                   ))}
-                </datalist>
+                </select>
+              </label>
+              <label>
+                Color
+                <select
+                  value={nuevaCategoriaForm.color}
+                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, color: e.target.value }))}
+                >
+                  {Object.entries(COLORES_CATEGORIA).map(([key, { label }]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Talla
                 <input
-                  value={form.talla}
-                  onChange={(e) => setForm((prev) => ({ ...prev, talla: e.target.value }))}
+                  value={nuevaCategoriaForm.talla}
+                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, talla: e.target.value }))}
                   placeholder="Ej: Talla 10 y 12"
                   required
                 />
@@ -220,10 +386,10 @@ export default function Precios() {
                 Precio (CLP)
                 <input
                   type="number"
-                  min="1"
-                  step="1"
-                  value={form.precio}
-                  onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
+                  min="1000"
+                  step="1000"
+                  value={nuevaCategoriaForm.precio}
+                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, precio: e.target.value }))}
                   required
                 />
               </label>
@@ -246,12 +412,12 @@ export default function Precios() {
       {modo === 'eliminar' && precioActivo && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Eliminar precio</h2>
+            <h2>Eliminar talla</h2>
             <p>
               ¿Seguro que deseas eliminar el siguiente precio?
               <br />
               <strong>
-                {precioActivo.tipo_prenda} — {precioActivo.talla}
+                {categoriaActiva?.nombre} — {precioActivo.talla}
               </strong>
             </p>
             <p className="modal-hint">Esta acción no se puede deshacer y dejará de mostrarse en el landing.</p>
@@ -259,7 +425,7 @@ export default function Precios() {
             {deleteError && <p className="form-error">{deleteError}</p>}
 
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={cerrarModal}>
+              <button type="button" className="btn-secondary" onClick={() => setModo('categoria')}>
                 Cancelar
               </button>
               <button type="button" className="btn-danger" disabled={deleting} onClick={confirmarEliminar}>

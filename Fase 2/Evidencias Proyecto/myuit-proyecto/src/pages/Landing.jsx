@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 import SocialIcons from '../components/SocialIcons'
 import Carousel from '../components/Carousel'
-import { IconShirt, IconJacket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
+import { getIconoCategoria } from '../lib/preciosCategorias'
 import fotoTaller1 from '../assets/foto_taller1.jpeg'
 import fotoTaller2 from '../assets/foto_taller2.jpeg'
 import fotoTaller3 from '../assets/foto_taller3.jpeg'
@@ -49,12 +49,6 @@ const FEATURES = [
   },
 ]
 
-const PRECIO_CATEGORIAS = {
-  'Poleras Deportivas': { icon: IconShirt, color: 'var(--blue)' },
-  'Poleras de Piqué': { icon: IconShirt, color: 'var(--purple)' },
-  'Buzos Escolares': { icon: IconJacket, color: 'var(--orange)' },
-}
-
 const FAQ_ITEMS = [
   {
     question: '¿Qué es Mil y Una Ideas?',
@@ -94,7 +88,7 @@ export default function Landing() {
     let activo = true
     supabase
       .from('precio_prenda')
-      .select('tipo_prenda, talla, precio')
+      .select('talla, precio, categoria_prenda(id_categoria, nombre, icono, color)')
       .order('id_precio', { ascending: true })
       .then(({ data, error }) => {
         if (!activo) return
@@ -110,11 +104,13 @@ export default function Landing() {
   }, [])
 
   const categoriasPrecio = precios.reduce((grupos, fila) => {
-    const grupo = grupos.find((g) => g.tipo_prenda === fila.tipo_prenda)
+    const categoria = fila.categoria_prenda
+    if (!categoria) return grupos
+    const grupo = grupos.find((g) => g.id_categoria === categoria.id_categoria)
     if (grupo) {
       grupo.tallas.push(fila)
     } else {
-      grupos.push({ tipo_prenda: fila.tipo_prenda, tallas: [fila] })
+      grupos.push({ ...categoria, tallas: [fila] })
     }
     return grupos
   }, [])
@@ -179,17 +175,16 @@ export default function Landing() {
         {!preciosError && categoriasPrecio.length > 0 && (
           <div className="precios-grid">
             {categoriasPrecio.map((categoria) => {
-              const config = PRECIO_CATEGORIAS[categoria.tipo_prenda] ?? {}
-              const Icono = config.icon
+              const Icono = getIconoCategoria(categoria.icono)
               return (
                 <div
                   className="precio-card"
-                  key={categoria.tipo_prenda}
-                  style={{ '--card-color': config.color ?? 'var(--accent)' }}
+                  key={categoria.id_categoria}
+                  style={{ '--card-color': categoria.color ?? 'var(--accent)' }}
                 >
                   <div className="precio-card-header">
-                    {Icono && <Icono />}
-                    <h3>{categoria.tipo_prenda}</h3>
+                    <Icono />
+                    <h3>{categoria.nombre}</h3>
                   </div>
                   <ul className="precio-list">
                     {categoria.tallas.map((fila) => (

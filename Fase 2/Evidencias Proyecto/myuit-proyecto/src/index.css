@@ -29,6 +29,7 @@
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading-display: 'Baloo 2', var(--heading);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
