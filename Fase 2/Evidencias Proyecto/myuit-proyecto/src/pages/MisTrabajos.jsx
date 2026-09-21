@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabaseClient'
 import { ESTADOS_TRABAJO, TIPO_TRABAJO_LABELS } from '../lib/trabajoConstants'
 import { IconEye, IconTicket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
+import { ROLES } from '../lib/roles'
 
 export default function MisTrabajos() {
-  const { usuario } = useAuth()
+  const { usuario, role } = useAuth()
+  const esJefa = role === ROLES.JEFA_TALLER
 
   const [trabajos, setTrabajos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,13 +20,18 @@ export default function MisTrabajos() {
   const fetchTrabajos = async () => {
     if (!usuario?.id_usu) return
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('trabajo')
       .select(
-        'id_trabajo, tipo_trabajo, estado, fecha_asignacion, fecha_termino, detalle:id_detalle ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, pedido:id_pedido ( id_pedido, fec_ini, fec_ter, estado_pedido, cliente:id_cli ( nom_cli, num_cli ) ) )',
+        'id_trabajo, tipo_trabajo, estado, fecha_asignacion, fecha_termino, id_usu, usuario:id_usu ( nom_usuario, ape_usuario ), detalle:id_detalle ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, pedido:id_pedido ( id_pedido, fec_ini, fec_ter, estado_pedido, cliente:id_cli ( nom_cli, num_cli ) ) )',
       )
-      .eq('id_usu', usuario.id_usu)
       .order('fecha_asignacion', { ascending: false })
+
+    query = esJefa
+      ? query.or(`estado.neq.terminado,id_usu.eq.${usuario.id_usu}`)
+      : query.eq('id_usu', usuario.id_usu)
+
+    const { data, error } = await query
 
     if (error) {
       setLoadError(error.message)
@@ -37,7 +44,7 @@ export default function MisTrabajos() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTrabajos().then(() => setLoading(false))
-  }, [usuario?.id_usu])
+  }, [usuario?.id_usu, esJefa])
 
   const handleEstadoChange = async (id_trabajo, estado) => {
     const payload = { estado, fecha_termino: null }
@@ -97,7 +104,7 @@ export default function MisTrabajos() {
   return (
     <div className="pedidos-page">
       <div className="pedidos-header">
-        <h1>Mis trabajos</h1>
+        <h1>{esJefa ? 'Trabajos' : 'Mis trabajos'}</h1>
       </div>
 
       {loading && <p>Cargando trabajos...</p>}
@@ -111,6 +118,7 @@ export default function MisTrabajos() {
               <th>Cliente</th>
               <th>Prenda</th>
               <th>Tarea</th>
+              {esJefa && <th>Responsable</th>}
               <th>Asignado</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -128,6 +136,13 @@ export default function MisTrabajos() {
                     {detalle ? `${detalle.cant_prendas}x ${detalle.tipo_prenda}` : '—'}
                   </td>
                   <td>{TIPO_TRABAJO_LABELS[trabajo.tipo_trabajo] ?? trabajo.tipo_trabajo}</td>
+                  {esJefa && (
+                    <td>
+                      {trabajo.usuario
+                        ? `${trabajo.usuario.nom_usuario} ${trabajo.usuario.ape_usuario}`
+                        : '—'}
+                    </td>
+                  )}
                   <td>
                     {trabajo.fecha_asignacion
                       ? new Date(trabajo.fecha_asignacion).toLocaleDateString()
@@ -182,7 +197,11 @@ export default function MisTrabajos() {
             })}
             {trabajos.length === 0 && (
               <tr>
-                <td colSpan={7}>No tienes trabajos asignados por el momento.</td>
+                <td colSpan={esJefa ? 8 : 7}>
+                  {esJefa
+                    ? 'No hay trabajos activos en este momento.'
+                    : 'No tienes trabajos asignados por el momento.'}
+                </td>
               </tr>
             )}
           </tbody>
@@ -224,6 +243,16 @@ export default function MisTrabajos() {
                     : '—'}
                 </span>
               </div>
+              {esJefa && (
+                <div className="detalle-field">
+                  <span className="detalle-label">Responsable</span>
+                  <span className="detalle-value">
+                    {trabajoActivo.usuario
+                      ? `${trabajoActivo.usuario.nom_usuario} ${trabajoActivo.usuario.ape_usuario}`
+                      : '—'}
+                  </span>
+                </div>
+              )}
               <div className="detalle-field">
                 <span className="detalle-label">Observaciones</span>
                 <span className="detalle-value">{trabajoActivo.detalle?.obs_detalle || '—'}</span>

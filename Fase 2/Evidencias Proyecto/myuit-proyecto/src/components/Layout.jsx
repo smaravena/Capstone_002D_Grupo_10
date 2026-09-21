@@ -1,12 +1,12 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
+  ROLES,
   ROLES_MODULO_USUARIOS,
   ROLES_MODULO_CLIENTES,
   ROLES_MODULO_PEDIDOS,
   ROLES_MODULO_MIS_TRABAJOS,
   ROLES_MODULO_PRECIOS,
-  getHomeRoute,
 } from '../lib/roles'
 import Logo from './Logo'
 
@@ -32,7 +32,7 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link to={getHomeRoute(role)} className="app-title" title="Ir a la página de inicio">
+        <Link to="/" className="app-title" title="Ir a la página de inicio">
           <Logo size={44} />
         </Link>
         <nav className="app-nav">
@@ -53,7 +53,7 @@ export default function Layout() {
           )}
           {puedeVerMisTrabajos && (
             <NavLink to="/mis-trabajos" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Mis trabajos
+              {role === ROLES.JEFA_TALLER ? 'Trabajos' : 'Mis trabajos'}
             </NavLink>
           )}
           {puedeVerPrecios && (

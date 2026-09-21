@@ -77,6 +77,11 @@ body {
   margin: 0;
 }
 
+select option {
+  color: var(--text-h);
+  background-color: var(--surface);
+}
+
 #root {
   width: 100%;
   margin: 0 auto;

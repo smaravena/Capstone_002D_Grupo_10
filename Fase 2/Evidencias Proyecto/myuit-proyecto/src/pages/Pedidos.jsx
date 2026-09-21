@@ -15,6 +15,8 @@ const TRABAJO_TIPOS = [
 
 const emptyDetalle = () => ({
   tipo_prenda: '',
+  talla: '',
+  precio: '',
   cant_prendas: 1,
   obs_detalle: '',
   id_usu_corte: '',
@@ -30,6 +32,9 @@ const emptyForm = () => ({
   estado_pedido: ESTADOS_PEDIDO[0],
   detalles: [emptyDetalle()],
 })
+
+const formatPrecio = (valor) =>
+  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(valor)
 
 const getResponsables = (pedido) => {
   const nombres = new Set()
@@ -48,6 +53,7 @@ export default function Pedidos() {
   const [pedidos, setPedidos] = useState([])
   const [clientes, setClientes] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [categoriasPrecio, setCategoriasPrecio] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
@@ -86,7 +92,7 @@ export default function Pedidos() {
     let query = supabase
       .from('pedido')
       .select(
-        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), detalle_pedido ( id_detalle, tipo_prenda, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
+        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), detalle_pedido ( id_detalle, tipo_prenda, talla, precio, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
       )
       .order('created_at', { ascending: false })
 
@@ -128,17 +134,78 @@ export default function Pedidos() {
     if (!error) setUsuarios(data)
   }
 
+  const fetchCategoriasPrecio = async () => {
+    const { data, error } = await supabase
+      .from('precio_prenda')
+      .select('talla, precio, categoria_prenda ( nombre )')
+      .order('id_precio', { ascending: true })
+
+    if (error) return
+
+    const grupos = []
+    data?.forEach((fila) => {
+      const nombre = fila.categoria_prenda?.nombre
+      if (!nombre) return
+      const grupo = grupos.find((g) => g.nombre === nombre)
+      const talla = { talla: fila.talla, precio: fila.precio }
+      if (grupo) {
+        if (!grupo.tallas.some((t) => t.talla === fila.talla)) grupo.tallas.push(talla)
+      } else {
+        grupos.push({ nombre, tallas: [talla] })
+      }
+    })
+    setCategoriasPrecio(grupos)
+  }
+
+  const getTallasDisponibles = (tipoPrenda) =>
+    categoriasPrecio.find((c) => c.nombre === tipoPrenda)?.tallas.map((t) => t.talla) ?? []
+
+  const getPrecioBase = (tipoPrenda, talla) => {
+    const categoria = categoriasPrecio.find((c) => c.nombre === tipoPrenda)
+    return categoria?.tallas.find((t) => t.talla === talla)?.precio ?? null
+  }
+
   useEffect(() => {
     // Carga inicial de datos: el setState ocurre dentro de fetchPedidos/fetchClientes/fetchUsuarios
     // después del await a Supabase, no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    Promise.all([fetchPedidos(), fetchClientes(), fetchUsuarios()]).then(() => setLoading(false))
+    Promise.all([fetchPedidos(), fetchClientes(), fetchUsuarios(), fetchCategoriasPrecio()]).then(() =>
+      setLoading(false),
+    )
   }, [])
 
   const handleDetalleChange = (index, field, value) => {
     setForm((prev) => {
       const detalles = [...prev.detalles]
       detalles[index] = { ...detalles[index], [field]: value }
+      return { ...prev, detalles }
+    })
+  }
+
+  const handleTipoPrendaChange = (index, tipoPrenda) => {
+    const talla = getTallasDisponibles(tipoPrenda)[0] ?? ''
+    const precioBase = getPrecioBase(tipoPrenda, talla)
+    setForm((prev) => {
+      const detalles = [...prev.detalles]
+      detalles[index] = {
+        ...detalles[index],
+        tipo_prenda: tipoPrenda,
+        talla,
+        precio: precioBase !== null ? String(precioBase) : '',
+      }
+      return { ...prev, detalles }
+    })
+  }
+
+  const handleTallaChange = (index, talla) => {
+    setForm((prev) => {
+      const detalles = [...prev.detalles]
+      const precioBase = getPrecioBase(detalles[index].tipo_prenda, talla)
+      detalles[index] = {
+        ...detalles[index],
+        talla,
+        precio: precioBase !== null ? String(precioBase) : detalles[index].precio,
+      }
       return { ...prev, detalles }
     })
   }
@@ -183,6 +250,8 @@ export default function Pedidos() {
             return {
               id_detalle: d.id_detalle,
               tipo_prenda: d.tipo_prenda,
+              talla: d.talla ?? '',
+              precio: d.precio != null ? String(d.precio) : '',
               cant_prendas: d.cant_prendas,
               obs_detalle: d.obs_detalle ?? '',
               id_usu_corte: trabajoCorte?.id_usu ? String(trabajoCorte.id_usu) : '',
@@ -224,7 +293,9 @@ export default function Pedidos() {
       }
     }
 
-    if (form.fec_ini && form.fec_ter && form.fec_ter < form.fec_ini) {
+    if (!form.fec_ini) return 'Ingresa la fecha de inicio.'
+    if (!form.fec_ter) return 'Ingresa la fecha de término.'
+    if (form.fec_ter < form.fec_ini) {
       return 'La fecha de término no puede ser anterior a la fecha de inicio.'
     }
 
@@ -238,6 +309,13 @@ export default function Pedidos() {
 
     for (const detalle of form.detalles) {
       if (!detalle.tipo_prenda.trim()) return 'Indica el tipo de prenda en cada línea de detalle.'
+      if (getTallasDisponibles(detalle.tipo_prenda).length > 0 && !detalle.talla) {
+        return 'Selecciona una talla para cada prenda.'
+      }
+      if (detalle.precio === '') return 'Ingresa el precio de cada prenda.'
+      if (!Number.isFinite(Number(detalle.precio)) || Number(detalle.precio) <= 0) {
+        return 'Ingresa un precio válido para cada prenda.'
+      }
       const cantidad = Number(detalle.cant_prendas)
       if (!Number.isInteger(cantidad) || cantidad <= 0) {
         return 'La cantidad de prendas debe ser un número entero mayor a 0.'
@@ -290,6 +368,8 @@ export default function Pedidos() {
         .from('detalle_pedido')
         .update({
           tipo_prenda: detalle.tipo_prenda,
+          talla: detalle.talla || null,
+          precio: detalle.precio !== '' ? Number(detalle.precio) : null,
           cant_prendas: Number(detalle.cant_prendas) || 0,
           obs_detalle: detalle.obs_detalle || null,
         })
@@ -308,6 +388,8 @@ export default function Pedidos() {
           toInsert.map((detalle) => ({
             id_pedido,
             tipo_prenda: detalle.tipo_prenda,
+            talla: detalle.talla || null,
+            precio: detalle.precio !== '' ? Number(detalle.precio) : null,
             cant_prendas: Number(detalle.cant_prendas) || 0,
             obs_detalle: detalle.obs_detalle || null,
           })),
@@ -377,6 +459,8 @@ export default function Pedidos() {
         const detallesPayload = form.detalles.map((d) => ({
           id_pedido: nuevoPedido.id_pedido,
           tipo_prenda: d.tipo_prenda,
+          talla: d.talla || null,
+          precio: d.precio !== '' ? Number(d.precio) : null,
           cant_prendas: Number(d.cant_prendas) || 0,
           obs_detalle: d.obs_detalle || null,
         }))
@@ -636,6 +720,7 @@ export default function Pedidos() {
                           fec_ter: prev.fec_ter && prev.fec_ter < fec_ini ? '' : prev.fec_ter,
                         }))
                       }}
+                      required
                     />
                     {form.fec_ini && (
                       <button
@@ -657,6 +742,7 @@ export default function Pedidos() {
                       value={form.fec_ter}
                       min={form.fec_ini || undefined}
                       onChange={(e) => setForm((prev) => ({ ...prev, fec_ter: e.target.value }))}
+                      required
                     />
                     {form.fec_ter && (
                       <button
@@ -691,12 +777,44 @@ export default function Pedidos() {
                 {form.detalles.map((detalle, index) => (
                   <div className="detalle-item" key={detalle.id_detalle ?? index}>
                     <div className="detalle-row">
-                      <input
-                        placeholder="Tipo de prenda"
+                      <select
                         value={detalle.tipo_prenda}
-                        onChange={(e) => handleDetalleChange(index, 'tipo_prenda', e.target.value)}
+                        onChange={(e) => handleTipoPrendaChange(index, e.target.value)}
+                        aria-label="Tipo de prenda"
                         required
-                      />
+                      >
+                        <option value="">Tipo de prenda</option>
+                        {detalle.tipo_prenda &&
+                          !categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda) && (
+                            <option value={detalle.tipo_prenda} disabled>
+                              {detalle.tipo_prenda}
+                            </option>
+                          )}
+                        {categoriasPrecio.map((c) => (
+                          <option key={c.nombre} value={c.nombre}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={detalle.talla}
+                        onChange={(e) => handleTallaChange(index, e.target.value)}
+                        disabled={getTallasDisponibles(detalle.tipo_prenda).length === 0}
+                        required={getTallasDisponibles(detalle.tipo_prenda).length > 0}
+                        aria-label="Talla"
+                      >
+                        <option value="">Sin talla</option>
+                        {detalle.talla && !getTallasDisponibles(detalle.tipo_prenda).includes(detalle.talla) && (
+                          <option value={detalle.talla} disabled>
+                            {detalle.talla}
+                          </option>
+                        )}
+                        {getTallasDisponibles(detalle.tipo_prenda).map((talla) => (
+                          <option key={talla} value={talla}>
+                            {talla}
+                          </option>
+                        ))}
+                      </select>
                       <input
                         type="number"
                         min="1"
@@ -704,11 +822,6 @@ export default function Pedidos() {
                         value={detalle.cant_prendas}
                         onChange={(e) => handleDetalleChange(index, 'cant_prendas', e.target.value)}
                         required
-                      />
-                      <input
-                        placeholder="Observaciones"
-                        value={detalle.obs_detalle}
-                        onChange={(e) => handleDetalleChange(index, 'obs_detalle', e.target.value)}
                       />
                       <button
                         type="button"
@@ -749,10 +862,33 @@ export default function Pedidos() {
                         </select>
                       </label>
                     </div>
+                    <label className="detalle-precio-label">
+                      Precio (CLP)
+                      <input
+                        type="number"
+                        min="1"
+                        step="100"
+                        placeholder="Precio (CLP)"
+                        value={detalle.precio}
+                        onChange={(e) => handleDetalleChange(index, 'precio', e.target.value)}
+                        required
+                      />
+                    </label>
+                    <textarea
+                      className="detalle-observaciones"
+                      placeholder="Observaciones"
+                      rows={2}
+                      value={detalle.obs_detalle}
+                      onChange={(e) => {
+                        handleDetalleChange(index, 'obs_detalle', e.target.value)
+                        e.target.style.height = 'auto'
+                        e.target.style.height = `${e.target.scrollHeight}px`
+                      }}
+                    />
                   </div>
                 ))}
                 <button type="button" className="link-btn" onClick={addDetalle}>
-                  + Agregar línea
+                  + Agregar prenda
                 </button>
               </fieldset>
 
@@ -819,6 +955,8 @@ export default function Pedidos() {
                         return (
                           <li key={d.id_detalle}>
                             {d.cant_prendas}x {d.tipo_prenda}
+                            {d.talla ? ` (Talla ${d.talla})` : ''}
+                            {d.precio != null ? ` — ${formatPrecio(d.precio)}` : ''}
                             {d.obs_detalle ? ` — ${d.obs_detalle}` : ''}
                             <br />
                             <small>

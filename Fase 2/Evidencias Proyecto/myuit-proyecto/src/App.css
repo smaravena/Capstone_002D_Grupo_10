@@ -103,6 +103,7 @@
 .login-card input:not([type='radio']):not([type='checkbox']),
 .pedido-form input:not([type='radio']):not([type='checkbox']),
 .pedido-form select,
+.pedido-form textarea,
 .usuario-form input:not([type='radio']):not([type='checkbox']),
 .usuario-form select {
   display: block;
@@ -388,20 +389,30 @@
 
 .detalle-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr auto;
+  grid-template-columns: minmax(150px, 1.6fr) minmax(110px, 1fr) minmax(80px, 0.7fr) auto;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
 
   @media (max-width: 700px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 420px) {
     grid-template-columns: 1fr;
   }
+}
+
+.detalle-row select,
+.detalle-row input {
+  min-width: 0;
 }
 
 .detalle-asignacion {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .detalle-asignacion label {
@@ -410,6 +421,18 @@
   gap: 6px;
   font-size: 13px;
   margin-top: 0;
+}
+
+.detalle-precio-label {
+  max-width: 220px;
+  margin-bottom: 8px;
+}
+
+.detalle-observaciones {
+  width: 100%;
+  resize: vertical;
+  overflow: hidden;
+  min-height: 40px;
 }
 
 .link-btn {
@@ -492,8 +515,11 @@
 }
 
 .usuarios-actions {
-  display: flex;
-  gap: 4px;
+  white-space: nowrap;
+}
+
+.usuarios-actions .icon-btn + .icon-btn {
+  margin-left: 4px;
 }
 
 .pedidos-table tbody tr:last-child td,
