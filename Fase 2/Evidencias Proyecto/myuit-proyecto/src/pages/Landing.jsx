@@ -26,6 +26,14 @@ const FOTOS_TALLER = [
   fotoTaller8,
 ]
 
+// Colores por letra, tomados del logo
+const TITULO_LOGO = [
+  [['M', '#dc3f8a'], ['i', '#e01f25'], ['l', '#f5b93c']],
+  [['&', '#000000']],
+  [['u', '#8cbf5b'], ['n', '#8ccfd6'], ['a', '#43a1c6']],
+  [['I', '#1c3f8f'], ['d', '#6a3a8c'], ['e', '#ae88bd'], ['a', '#ee9dc0'], ['s', '#dc3f8a']],
+]
+
 const FEATURES = [
   {
     title: 'Diseño a medida',
@@ -122,9 +130,9 @@ export default function Landing() {
           <Logo size={52} />
         </Link>
         <nav className="landing-nav">
+          <a href="#taller">Nuestro taller</a>
           <a href="#servicios">Servicios</a>
           <a href="#precios">Lista de precios</a>
-          <a href="#taller">Nuestro taller</a>
           <a href="#faq">Preguntas frecuentes</a>
           <a href="#contacto">Contacto</a>
         </nav>
@@ -133,24 +141,31 @@ export default function Landing() {
         </Link>
       </header>
 
-      <section className="landing-hero">
-        <div className="landing-hero-text">
-          <h1>
-            Mil <span className="amp">&amp;</span> Una Ideas
-          </h1>
-          <p className="landing-description">
-            El taller de costura donde cada prenda nace de una idea. Gestiona tu equipo y tus pedidos en un
-            solo lugar, de forma simple y ordenada.
-          </p>
-          <div className="landing-hero-actions">
-            <a href="#servicios" className="btn-secondary">
-              Conocer más
-            </a>
+      <section id="taller" className="landing-hero">
+        <Carousel images={FOTOS_TALLER} className="carousel-hero">
+          <div className="landing-hero-text">
+            <h1 className="hero-title-logo" aria-label="Mil & una Ideas">
+              {TITULO_LOGO.map((palabra, i) => (
+                <span className="hero-title-word" key={i} aria-hidden="true">
+                  {palabra.map(([letra, color], j) => (
+                    <span key={j} style={{ color }}>
+                      {letra}
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </h1>
+            <p className="landing-description">
+              El taller de costura donde cada prenda nace de una idea. Gestiona tu equipo y tus pedidos en un
+              solo lugar, de forma simple y ordenada.
+            </p>
+            <div className="landing-hero-actions">
+              <a href="#servicios" className="btn-secondary">
+                Conocer más
+              </a>
+            </div>
           </div>
-        </div>
-        <div className="landing-hero-logo">
-          <Logo size={180} />
-        </div>
+        </Carousel>
       </section>
 
       <section id="servicios" className="landing-features">
@@ -200,12 +215,6 @@ export default function Landing() {
             })}
           </div>
         )}
-      </section>
-
-      <section id="taller" className="landing-gallery">
-        <h2 className="precios-title-marker">Nuestro taller</h2>
-        <p className="gallery-subtitle">Un vistazo al espacio donde cobran vida las prendas.</p>
-        <Carousel images={FOTOS_TALLER} />
       </section>
 
       <section id="faq" className="landing-faq">

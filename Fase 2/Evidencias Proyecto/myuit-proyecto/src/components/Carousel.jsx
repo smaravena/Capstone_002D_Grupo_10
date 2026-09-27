@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export default function Carousel({ images, interval = 4000 }) {
+export default function Carousel({ images, interval = 4000, className = '', children }) {
   const [index, setIndex] = useState(0)
   const timerRef = useRef(null)
 
@@ -22,13 +22,15 @@ export default function Carousel({ images, interval = 4000 }) {
   }, [images.length, interval])
 
   return (
-    <div className="carousel">
+    <div className={`carousel ${className}`}>
       <div className="carousel-viewport">
         <div className="carousel-track" style={{ transform: `translateX(-${index * 100}%)` }}>
           {images.map((src, i) => (
             <img key={src} src={src} alt={`Taller Mil y Una Ideas ${i + 1}`} className="carousel-slide" />
           ))}
         </div>
+
+        {children && <div className="carousel-overlay">{children}</div>}
 
         <button type="button" className="carousel-arrow carousel-arrow-prev" onClick={goPrev} aria-label="Foto anterior">
           ‹
