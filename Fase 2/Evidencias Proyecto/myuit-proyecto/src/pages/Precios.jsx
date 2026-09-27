@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { ICONOS_CATEGORIA, COLORES_CATEGORIA, getIconoCategoria } from '../lib/preciosCategorias'
+import {
+  MAX_DIGITOS_PRECIO,
+  limpiarPrecio,
+  soloErrores,
+  validarPrecio,
+  validarRequerido,
+  validarTexto,
+} from '../lib/validators'
+import FieldError from '../components/FieldError'
+import { useValidacion } from '../hooks/useValidacion'
 
 const NUEVA_TALLA = '__nueva_talla__'
 
@@ -11,6 +21,19 @@ const emptyNuevaCategoria = () => ({
   talla: '',
   precio: '',
 })
+
+const validarPrecioCategoria = ({ esNueva, tallaNueva, precio }) =>
+  soloErrores({
+    tallaNueva: esNueva ? validarRequerido(tallaNueva, 'la talla') : null,
+    precio: validarPrecio(precio),
+  })
+
+const validarNuevaCategoria = (form) =>
+  soloErrores({
+    nombre: validarTexto(form.nombre, 'el nombre de la categoría'),
+    talla: validarRequerido(form.talla, 'la talla'),
+    precio: validarPrecio(form.precio),
+  })
 
 const formatPrecio = (valor) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(valor)
@@ -37,6 +60,18 @@ export default function Precios() {
   const [precioActivo, setPrecioActivo] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+
+  const valCategoria = useValidacion(validarPrecioCategoria, {
+    esNueva: tallaSeleccionada === NUEVA_TALLA,
+    tallaNueva,
+    precio: precioInput,
+  })
+  const valNueva = useValidacion(validarNuevaCategoria, nuevaCategoriaForm)
+
+  const cambiarNuevaCategoria = (campo, valor) => {
+    setNuevaCategoriaForm((prev) => ({ ...prev, [campo]: valor }))
+    valNueva.tocar(campo)
+  }
 
   const fetchPrecios = async () => {
     const { data, error } = await supabase
@@ -91,12 +126,14 @@ export default function Precios() {
     setTallaNueva('')
     setPrecioInput(primera ? String(primera.precio) : '')
     setFormError(null)
+    valCategoria.reiniciar()
     setModo('categoria')
   }
 
   const abrirNuevaCategoria = () => {
     setNuevaCategoriaForm(emptyNuevaCategoria())
     setFormError(null)
+    valNueva.reiniciar()
     setModo('nuevaCategoria')
   }
 
@@ -104,6 +141,7 @@ export default function Precios() {
     setTallaSeleccionada(value)
     setTallaNueva('')
     setFormError(null)
+    valCategoria.reiniciar()
     if (value === NUEVA_TALLA) {
       setPrecioInput('')
     } else {
@@ -125,14 +163,7 @@ export default function Precios() {
     const talla = (esNueva ? tallaNueva : tallaSeleccionada).trim()
     const precio = Number(precioInput)
 
-    if (!talla) {
-      setFormError('Ingresa el nombre de la talla.')
-      return
-    }
-    if (!Number.isFinite(precio) || precio <= 0) {
-      setFormError('Ingresa un precio válido, mayor a 0.')
-      return
-    }
+    if (!valCategoria.validarEnvio()) return
 
     setSubmitting(true)
     try {
@@ -166,14 +197,7 @@ export default function Precios() {
     const talla = nuevaCategoriaForm.talla.trim()
     const precio = Number(nuevaCategoriaForm.precio)
 
-    if (!nombre || !talla) {
-      setFormError('El nombre de la categoría y la talla son obligatorios.')
-      return
-    }
-    if (!Number.isFinite(precio) || precio <= 0) {
-      setFormError('Ingresa un precio válido, mayor a 0.')
-      return
-    }
+    if (!valNueva.validarEnvio()) return
 
     setSubmitting(true)
     try {
@@ -270,7 +294,7 @@ export default function Precios() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card modal-card-lg" onClick={(e) => e.stopPropagation()}>
             <h2>{categoriaActiva.nombre}</h2>
-            <form className="usuario-form" onSubmit={guardarPrecioCategoria}>
+            <form className="usuario-form" onSubmit={guardarPrecioCategoria} noValidate>
               <label>
                 Talla
                 <select value={tallaSeleccionada} onChange={(e) => handleSeleccionTalla(e.target.value)}>
@@ -288,23 +312,30 @@ export default function Precios() {
                   Nombre de la nueva talla
                   <input
                     value={tallaNueva}
-                    onChange={(e) => setTallaNueva(e.target.value)}
+                    onChange={(e) => {
+                      setTallaNueva(e.target.value)
+                      valCategoria.tocar('tallaNueva')
+                    }}
                     placeholder="Ej: Talla 14 y 16"
-                    required
+                    aria-invalid={Boolean(valCategoria.errorDe('tallaNueva'))}
                   />
+                  <FieldError mensaje={valCategoria.errorDe('tallaNueva')} />
                 </label>
               )}
 
               <label>
                 Precio actual (CLP)
                 <input
-                  type="number"
-                  min="1000"
-                  step="1000"
+                  inputMode="numeric"
+                  maxLength={MAX_DIGITOS_PRECIO}
                   value={precioInput}
-                  onChange={(e) => setPrecioInput(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setPrecioInput(limpiarPrecio(e.target.value))
+                    valCategoria.tocar('precio')
+                  }}
+                  aria-invalid={Boolean(valCategoria.errorDe('precio'))}
                 />
+                <FieldError mensaje={valCategoria.errorDe('precio')} />
               </label>
 
               {formError && <p className="form-error">{formError}</p>}
@@ -337,15 +368,16 @@ export default function Precios() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>Nueva categoría</h2>
-            <form className="usuario-form" onSubmit={handleSubmitNuevaCategoria}>
+            <form className="usuario-form" onSubmit={handleSubmitNuevaCategoria} noValidate>
               <label>
                 Nombre de la categoría
                 <input
                   value={nuevaCategoriaForm.nombre}
-                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                  onChange={(e) => cambiarNuevaCategoria('nombre', e.target.value)}
                   placeholder="Ej: Buzos Escolares"
-                  required
+                  aria-invalid={Boolean(valNueva.errorDe('nombre'))}
                 />
+                <FieldError mensaje={valNueva.errorDe('nombre')} />
               </label>
               <label>
                 Icono
@@ -377,21 +409,22 @@ export default function Precios() {
                 Talla
                 <input
                   value={nuevaCategoriaForm.talla}
-                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, talla: e.target.value }))}
+                  onChange={(e) => cambiarNuevaCategoria('talla', e.target.value)}
                   placeholder="Ej: Talla 10 y 12"
-                  required
+                  aria-invalid={Boolean(valNueva.errorDe('talla'))}
                 />
+                <FieldError mensaje={valNueva.errorDe('talla')} />
               </label>
               <label>
                 Precio (CLP)
                 <input
-                  type="number"
-                  min="1000"
-                  step="1000"
+                  inputMode="numeric"
+                  maxLength={MAX_DIGITOS_PRECIO}
                   value={nuevaCategoriaForm.precio}
-                  onChange={(e) => setNuevaCategoriaForm((prev) => ({ ...prev, precio: e.target.value }))}
-                  required
+                  onChange={(e) => cambiarNuevaCategoria('precio', limpiarPrecio(e.target.value))}
+                  aria-invalid={Boolean(valNueva.errorDe('precio'))}
                 />
+                <FieldError mensaje={valNueva.errorDe('precio')} />
               </label>
 
               {formError && <p className="form-error">{formError}</p>}

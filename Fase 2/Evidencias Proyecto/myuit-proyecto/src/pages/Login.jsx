@@ -3,8 +3,18 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import Logo from '../components/Logo'
-import { EMAIL_REGEX } from '../lib/validators'
+import FieldError from '../components/FieldError'
+import { useValidacion } from '../hooks/useValidacion'
+import { soloErrores, validarCorreo, validarPassword } from '../lib/validators'
 import { getHomeRoute } from '../lib/roles'
+
+const validarLogin = ({ email, password }) =>
+  soloErrores({
+    email: validarCorreo(email),
+    password: validarPassword(password, { conMinimo: false }),
+  })
+
+const validarSoloCorreo = ({ email }) => soloErrores({ email: validarCorreo(email) })
 
 export default function Login() {
   const { signIn, isAuthenticated, loading, role } = useAuth()
@@ -26,30 +36,22 @@ export default function Login() {
   const [setupError, setSetupError] = useState(null)
   const [setupSubmitting, setSetupSubmitting] = useState(false)
 
+  const valLogin = useValidacion(validarLogin, { email, password })
+  const valForgot = useValidacion(validarSoloCorreo, { email: forgotEmail })
+  const valSetup = useValidacion(validarSoloCorreo, { email: setupEmail })
+
   if (!loading && isAuthenticated) {
     return <Navigate to={getHomeRoute(role)} replace />
   }
 
-  const validate = () => {
-    if (!email.trim()) return 'Ingresa tu correo electrónico.'
-    if (!EMAIL_REGEX.test(email.trim())) return 'Ingresa un correo electrónico válido.'
-    if (!password) return 'Ingresa tu contraseña.'
-    return null
-  }
-
   const handleSubmit = async (event) => {
     event.preventDefault()
-
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
     setError(null)
+    if (!valLogin.validarEnvio()) return
+
     setSubmitting(true)
     try {
-      await signIn(email, password)
+      await signIn(email.trim(), password)
     } catch (err) {
       setError('Correo o contraseña incorrectos.')
       console.error(err)
@@ -62,6 +64,7 @@ export default function Login() {
     setForgotEmail(email)
     setForgotSent(false)
     setForgotError(null)
+    valForgot.reiniciar()
     setShowForgotModal(true)
   }
 
@@ -72,13 +75,10 @@ export default function Login() {
   const handleForgotSubmit = async (event) => {
     event.preventDefault()
 
-    const correo = forgotEmail.trim()
-    if (!correo || !EMAIL_REGEX.test(correo)) {
-      setForgotError('Ingresa un correo electrónico válido.')
-      return
-    }
-
     setForgotError(null)
+    if (!valForgot.validarEnvio()) return
+
+    const correo = forgotEmail.trim()
     setForgotSubmitting(true)
     try {
       const { data: existe, error: lookupError } = await supabase.rpc('usuario_existe', {
@@ -109,6 +109,7 @@ export default function Login() {
   const abrirModalSetup = () => {
     setSetupEmail(email)
     setSetupError(null)
+    valSetup.reiniciar()
     setShowSetupModal(true)
   }
 
@@ -119,13 +120,10 @@ export default function Login() {
   const handleSetupSubmit = async (event) => {
     event.preventDefault()
 
-    const correo = setupEmail.trim()
-    if (!correo || !EMAIL_REGEX.test(correo)) {
-      setSetupError('Ingresa un correo electrónico válido.')
-      return
-    }
-
     setSetupError(null)
+    if (!valSetup.validarEnvio()) return
+
+    const correo = setupEmail.trim()
     setSetupSubmitting(true)
     try {
       const { data, error: rpcError } = await supabase.rpc('usuario_estado_login', {
@@ -171,8 +169,13 @@ export default function Login() {
           type="email"
           autoComplete="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            valLogin.tocar('email')
+          }}
+          aria-invalid={Boolean(valLogin.errorDe('email'))}
         />
+        <FieldError mensaje={valLogin.errorDe('email')} />
 
         <label htmlFor="password">Contraseña</label>
         <input
@@ -180,8 +183,13 @@ export default function Login() {
           type="password"
           autoComplete="current-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value)
+            valLogin.tocar('password')
+          }}
+          aria-invalid={Boolean(valLogin.errorDe('password'))}
         />
+        <FieldError mensaje={valLogin.errorDe('password')} />
 
         <button type="button" className="forgot-password" onClick={abrirModalOlvido}>
           ¿Olvidaste tu contraseña?
@@ -220,8 +228,13 @@ export default function Login() {
                   type="email"
                   autoComplete="email"
                   value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
+                  onChange={(e) => {
+                    setForgotEmail(e.target.value)
+                    valForgot.tocar('email')
+                  }}
+                  aria-invalid={Boolean(valForgot.errorDe('email'))}
                 />
+                <FieldError mensaje={valForgot.errorDe('email')} />
 
                 {forgotError && <p className="form-error">{forgotError}</p>}
 
@@ -255,8 +268,13 @@ export default function Login() {
                 type="email"
                 autoComplete="email"
                 value={setupEmail}
-                onChange={(e) => setSetupEmail(e.target.value)}
+                onChange={(e) => {
+                  setSetupEmail(e.target.value)
+                  valSetup.tocar('email')
+                }}
+                aria-invalid={Boolean(valSetup.errorDe('email'))}
               />
+              <FieldError mensaje={valSetup.errorDe('email')} />
 
               {setupError && <p className="form-error">{setupError}</p>}
 

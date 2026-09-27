@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { ESTADOS_PEDIDO } from '../lib/pedidoConstants'
-import { EMAIL_REGEX, PHONE_REGEX } from '../lib/validators'
+import {
+  MAX_DIGITOS_PRECIO,
+  PREFIJO_CELULAR,
+  limpiarPrecio,
+  soloErrores,
+  validarCantidad,
+  validarCelular,
+  validarCorreo,
+  validarPrecio,
+  validarTexto,
+} from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
+import FieldError from '../components/FieldError'
+import TelefonoInput from '../components/TelefonoInput'
+import { useValidacion } from '../hooks/useValidacion'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../lib/roles'
 
@@ -175,6 +188,7 @@ export default function Pedidos() {
   }, [])
 
   const handleDetalleChange = (index, field, value) => {
+    tocar(`detalles.${index}.${field}`)
     setForm((prev) => {
       const detalles = [...prev.detalles]
       detalles[index] = { ...detalles[index], [field]: value }
@@ -185,6 +199,7 @@ export default function Pedidos() {
   const handleTipoPrendaChange = (index, tipoPrenda) => {
     const talla = getTallasDisponibles(tipoPrenda)[0] ?? ''
     const precioBase = getPrecioBase(tipoPrenda, talla)
+    tocar(`detalles.${index}.tipo_prenda`)
     setForm((prev) => {
       const detalles = [...prev.detalles]
       detalles[index] = {
@@ -198,6 +213,7 @@ export default function Pedidos() {
   }
 
   const handleTallaChange = (index, talla) => {
+    tocar(`detalles.${index}.talla`)
     setForm((prev) => {
       const detalles = [...prev.detalles]
       const precioBase = getPrecioBase(detalles[index].tipo_prenda, talla)
@@ -225,6 +241,7 @@ export default function Pedidos() {
     if (soloPropios) return
     setForm(emptyForm())
     setFormError(null)
+    reiniciar()
     setPedidoActivo(null)
     setModo('crear')
   }
@@ -261,6 +278,7 @@ export default function Pedidos() {
         : [emptyDetalle()],
     })
     setFormError(null)
+    reiniciar()
     setPedidoActivo(pedido)
     setModo('editar')
   }
@@ -280,49 +298,47 @@ export default function Pedidos() {
     setDeleteError(null)
   }
 
-  const validateForm = () => {
-    if (form.clienteMode === 'existing') {
-      if (!form.id_cli) return 'Selecciona un cliente.'
+  const validarPedido = (valores) => {
+    const errores = {}
+
+    if (valores.clienteMode === 'existing') {
+      if (!valores.id_cli) errores.id_cli = 'Selecciona un cliente.'
     } else {
-      const { nom_cli, num_cli, correo_cli } = form.nuevoCliente
-      if (!nom_cli.trim()) return 'Ingresa el nombre del cliente.'
-      if (!num_cli.trim()) return 'Ingresa el teléfono del cliente.'
-      if (!PHONE_REGEX.test(num_cli.trim())) return 'Ingresa un teléfono válido.'
-      if (correo_cli.trim() && !EMAIL_REGEX.test(correo_cli.trim())) {
-        return 'Ingresa un correo electrónico válido para el cliente.'
-      }
+      const { nom_cli, num_cli, correo_cli } = valores.nuevoCliente
+      errores.nom_cli = validarTexto(nom_cli, 'el nombre del cliente')
+      errores.num_cli = validarCelular(num_cli)
+      errores.correo_cli = validarCorreo(correo_cli, { obligatorio: false })
     }
 
-    if (!form.fec_ini) return 'Ingresa la fecha de inicio.'
-    if (!form.fec_ter) return 'Ingresa la fecha de término.'
-    if (form.fec_ter < form.fec_ini) {
-      return 'La fecha de término no puede ser anterior a la fecha de inicio.'
+    if (!valores.fec_ini) errores.fec_ini = 'Falta la fecha de inicio.'
+    if (!valores.fec_ter) {
+      errores.fec_ter = 'Falta la fecha de término.'
+    } else if (valores.fec_ini && valores.fec_ter < valores.fec_ini) {
+      errores.fec_ter = 'La fecha de término no puede ser anterior a la fecha de inicio.'
     }
 
-    if (!ESTADOS_PEDIDO.includes(form.estado_pedido)) {
-      return 'Selecciona un estado válido de la lista.'
+    if (!ESTADOS_PEDIDO.includes(valores.estado_pedido)) {
+      errores.estado_pedido = 'Selecciona un estado válido de la lista.'
     }
 
-    if (form.detalles.length === 0) {
-      return 'Agrega al menos una línea de detalle.'
-    }
-
-    for (const detalle of form.detalles) {
-      if (!detalle.tipo_prenda.trim()) return 'Indica el tipo de prenda en cada línea de detalle.'
+    valores.detalles.forEach((detalle, index) => {
+      const campo = (nombre) => `detalles.${index}.${nombre}`
+      if (!detalle.tipo_prenda.trim()) errores[campo('tipo_prenda')] = 'Selecciona el tipo de prenda.'
       if (getTallasDisponibles(detalle.tipo_prenda).length > 0 && !detalle.talla) {
-        return 'Selecciona una talla para cada prenda.'
+        errores[campo('talla')] = 'Selecciona una talla.'
       }
-      if (detalle.precio === '') return 'Ingresa el precio de cada prenda.'
-      if (!Number.isFinite(Number(detalle.precio)) || Number(detalle.precio) <= 0) {
-        return 'Ingresa un precio válido para cada prenda.'
-      }
-      const cantidad = Number(detalle.cant_prendas)
-      if (!Number.isInteger(cantidad) || cantidad <= 0) {
-        return 'La cantidad de prendas debe ser un número entero mayor a 0.'
-      }
-    }
+      errores[campo('cant_prendas')] = validarCantidad(detalle.cant_prendas)
+      errores[campo('precio')] = validarPrecio(detalle.precio)
+    })
 
-    return null
+    return soloErrores(errores)
+  }
+
+  const { errorDe, tocar, validarEnvio, reiniciar } = useValidacion(validarPedido, form)
+
+  const cambiarNuevoCliente = (campo, valor) => {
+    setForm((prev) => ({ ...prev, nuevoCliente: { ...prev.nuevoCliente, [campo]: valor } }))
+    tocar(campo)
   }
 
   const syncTrabajoAsignaciones = async (id_detalle, detalle, trabajosExistentes = []) => {
@@ -407,9 +423,8 @@ export default function Pedidos() {
     event.preventDefault()
     setFormError(null)
 
-    const validationError = validateForm()
-    if (validationError) {
-      setFormError(validationError)
+    if (!validarEnvio()) {
+      setFormError('Revisa los campos marcados en rojo.')
       return
     }
 
@@ -420,7 +435,11 @@ export default function Pedidos() {
       if (form.clienteMode === 'new') {
         const { data: nuevoCliente, error: clienteError } = await supabase
           .from('cliente')
-          .insert(form.nuevoCliente)
+          .insert({
+            nom_cli: form.nuevoCliente.nom_cli.trim(),
+            num_cli: `${PREFIJO_CELULAR}${form.nuevoCliente.num_cli}`,
+            correo_cli: form.nuevoCliente.correo_cli.trim() || null,
+          })
           .select('id_cli')
           .single()
 
@@ -627,7 +646,7 @@ export default function Pedidos() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card modal-card-lg" onClick={(e) => e.stopPropagation()}>
             <h2>{modo === 'crear' ? 'Nuevo pedido' : 'Editar pedido'}</h2>
-            <form className="pedido-form" onSubmit={handleSubmit}>
+            <form className="pedido-form" onSubmit={handleSubmit} noValidate>
               <fieldset>
                 <legend>Cliente</legend>
                 <div className="cliente-mode-toggle">
@@ -652,53 +671,53 @@ export default function Pedidos() {
                 </div>
 
                 {form.clienteMode === 'existing' ? (
-                  <select
-                    value={form.id_cli}
-                    onChange={(e) => setForm((prev) => ({ ...prev, id_cli: e.target.value }))}
-                    required
-                  >
-                    <option value="">Selecciona un cliente</option>
-                    {clientes.map((c) => (
-                      <option key={c.id_cli} value={c.id_cli}>
-                        {c.nom_cli} ({c.num_cli})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      value={form.id_cli}
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, id_cli: e.target.value }))
+                        tocar('id_cli')
+                      }}
+                      aria-invalid={Boolean(errorDe('id_cli'))}
+                    >
+                      <option value="">Selecciona un cliente</option>
+                      {clientes.map((c) => (
+                        <option key={c.id_cli} value={c.id_cli}>
+                          {c.nom_cli} ({c.num_cli})
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError mensaje={errorDe('id_cli')} />
+                  </>
                 ) : (
                   <div className="cliente-nuevo-fields">
-                    <input
-                      placeholder="Nombre"
-                      value={form.nuevoCliente.nom_cli}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          nuevoCliente: { ...prev.nuevoCliente, nom_cli: e.target.value },
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      placeholder="Teléfono"
-                      value={form.nuevoCliente.num_cli}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          nuevoCliente: { ...prev.nuevoCliente, num_cli: e.target.value },
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      placeholder="Correo"
-                      type="email"
-                      value={form.nuevoCliente.correo_cli}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          nuevoCliente: { ...prev.nuevoCliente, correo_cli: e.target.value },
-                        }))
-                      }
-                    />
+                    <div>
+                      <input
+                        placeholder="Nombre"
+                        value={form.nuevoCliente.nom_cli}
+                        onChange={(e) => cambiarNuevoCliente('nom_cli', e.target.value)}
+                        aria-invalid={Boolean(errorDe('nom_cli'))}
+                      />
+                      <FieldError mensaje={errorDe('nom_cli')} />
+                    </div>
+                    <div>
+                      <TelefonoInput
+                        value={form.nuevoCliente.num_cli}
+                        onChange={(valor) => cambiarNuevoCliente('num_cli', valor)}
+                        invalid={Boolean(errorDe('num_cli'))}
+                      />
+                      <FieldError mensaje={errorDe('num_cli')} />
+                    </div>
+                    <div>
+                      <input
+                        placeholder="Correo"
+                        type="email"
+                        value={form.nuevoCliente.correo_cli}
+                        onChange={(e) => cambiarNuevoCliente('correo_cli', e.target.value)}
+                        aria-invalid={Boolean(errorDe('correo_cli'))}
+                      />
+                      <FieldError mensaje={errorDe('correo_cli')} />
+                    </div>
                   </div>
                 )}
               </fieldset>
@@ -719,8 +738,9 @@ export default function Pedidos() {
                           fec_ini,
                           fec_ter: prev.fec_ter && prev.fec_ter < fec_ini ? '' : prev.fec_ter,
                         }))
+                        tocar('fec_ini')
                       }}
-                      required
+                      aria-invalid={Boolean(errorDe('fec_ini'))}
                     />
                     {form.fec_ini && (
                       <button
@@ -733,6 +753,7 @@ export default function Pedidos() {
                       </button>
                     )}
                   </div>
+                  <FieldError mensaje={errorDe('fec_ini')} />
                 </label>
                 <label>
                   Fecha término
@@ -741,8 +762,11 @@ export default function Pedidos() {
                       type="date"
                       value={form.fec_ter}
                       min={form.fec_ini || undefined}
-                      onChange={(e) => setForm((prev) => ({ ...prev, fec_ter: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, fec_ter: e.target.value }))
+                        tocar('fec_ter')
+                      }}
+                      aria-invalid={Boolean(errorDe('fec_ter'))}
                     />
                     {form.fec_ter && (
                       <button
@@ -755,6 +779,7 @@ export default function Pedidos() {
                       </button>
                     )}
                   </div>
+                  <FieldError mensaje={errorDe('fec_ter')} />
                 </label>
                 <label>
                   Estado
@@ -769,6 +794,7 @@ export default function Pedidos() {
                       </option>
                     ))}
                   </select>
+                  <FieldError mensaje={errorDe('estado_pedido')} />
                 </label>
               </fieldset>
 
@@ -777,52 +803,61 @@ export default function Pedidos() {
                 {form.detalles.map((detalle, index) => (
                   <div className="detalle-item" key={detalle.id_detalle ?? index}>
                     <div className="detalle-row">
-                      <select
-                        value={detalle.tipo_prenda}
-                        onChange={(e) => handleTipoPrendaChange(index, e.target.value)}
-                        aria-label="Tipo de prenda"
-                        required
-                      >
-                        <option value="">Tipo de prenda</option>
-                        {detalle.tipo_prenda &&
-                          !categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda) && (
-                            <option value={detalle.tipo_prenda} disabled>
-                              {detalle.tipo_prenda}
+                      <div>
+                        <select
+                          value={detalle.tipo_prenda}
+                          onChange={(e) => handleTipoPrendaChange(index, e.target.value)}
+                          aria-label="Tipo de prenda"
+                          aria-invalid={Boolean(errorDe(`detalles.${index}.tipo_prenda`))}
+                        >
+                          <option value="">Tipo de prenda</option>
+                          {detalle.tipo_prenda &&
+                            !categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda) && (
+                              <option value={detalle.tipo_prenda} disabled>
+                                {detalle.tipo_prenda}
+                              </option>
+                            )}
+                          {categoriasPrecio.map((c) => (
+                            <option key={c.nombre} value={c.nombre}>
+                              {c.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError mensaje={errorDe(`detalles.${index}.tipo_prenda`)} />
+                      </div>
+                      <div>
+                        <select
+                          value={detalle.talla}
+                          onChange={(e) => handleTallaChange(index, e.target.value)}
+                          disabled={getTallasDisponibles(detalle.tipo_prenda).length === 0}
+                          aria-label="Talla"
+                          aria-invalid={Boolean(errorDe(`detalles.${index}.talla`))}
+                        >
+                          <option value="">Sin talla</option>
+                          {detalle.talla && !getTallasDisponibles(detalle.tipo_prenda).includes(detalle.talla) && (
+                            <option value={detalle.talla} disabled>
+                              {detalle.talla}
                             </option>
                           )}
-                        {categoriasPrecio.map((c) => (
-                          <option key={c.nombre} value={c.nombre}>
-                            {c.nombre}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={detalle.talla}
-                        onChange={(e) => handleTallaChange(index, e.target.value)}
-                        disabled={getTallasDisponibles(detalle.tipo_prenda).length === 0}
-                        required={getTallasDisponibles(detalle.tipo_prenda).length > 0}
-                        aria-label="Talla"
-                      >
-                        <option value="">Sin talla</option>
-                        {detalle.talla && !getTallasDisponibles(detalle.tipo_prenda).includes(detalle.talla) && (
-                          <option value={detalle.talla} disabled>
-                            {detalle.talla}
-                          </option>
-                        )}
-                        {getTallasDisponibles(detalle.tipo_prenda).map((talla) => (
-                          <option key={talla} value={talla}>
-                            {talla}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Cantidad"
-                        value={detalle.cant_prendas}
-                        onChange={(e) => handleDetalleChange(index, 'cant_prendas', e.target.value)}
-                        required
-                      />
+                          {getTallasDisponibles(detalle.tipo_prenda).map((talla) => (
+                            <option key={talla} value={talla}>
+                              {talla}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError mensaje={errorDe(`detalles.${index}.talla`)} />
+                      </div>
+                      <div>
+                        <input
+                          inputMode="numeric"
+                          placeholder="Cantidad"
+                          aria-label="Cantidad"
+                          value={detalle.cant_prendas}
+                          onChange={(e) => handleDetalleChange(index, 'cant_prendas', e.target.value.replace(/\D/g, ''))}
+                          aria-invalid={Boolean(errorDe(`detalles.${index}.cant_prendas`))}
+                        />
+                        <FieldError mensaje={errorDe(`detalles.${index}.cant_prendas`)} />
+                      </div>
                       <button
                         type="button"
                         className="link-btn"
@@ -865,14 +900,14 @@ export default function Pedidos() {
                     <label className="detalle-precio-label">
                       Precio (CLP)
                       <input
-                        type="number"
-                        min="1"
-                        step="100"
+                        inputMode="numeric"
+                        maxLength={MAX_DIGITOS_PRECIO}
                         placeholder="Precio (CLP)"
                         value={detalle.precio}
-                        onChange={(e) => handleDetalleChange(index, 'precio', e.target.value)}
-                        required
+                        onChange={(e) => handleDetalleChange(index, 'precio', limpiarPrecio(e.target.value))}
+                        aria-invalid={Boolean(errorDe(`detalles.${index}.precio`))}
                       />
+                      <FieldError mensaje={errorDe(`detalles.${index}.precio`)} />
                     </label>
                     <textarea
                       className="detalle-observaciones"

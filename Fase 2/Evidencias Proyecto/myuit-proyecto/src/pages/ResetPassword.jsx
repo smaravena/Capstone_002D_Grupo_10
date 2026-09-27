@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import Logo from '../components/Logo'
+import FieldError from '../components/FieldError'
+import { useValidacion } from '../hooks/useValidacion'
+import { soloErrores, validarConfirmacion, validarPassword } from '../lib/validators'
 
-const MIN_PASSWORD_LENGTH = 6
+const validarNuevaPassword = ({ password, confirmPassword }) =>
+  soloErrores({
+    password: validarPassword(password),
+    confirmPassword: validarConfirmacion(password, confirmPassword),
+  })
 
 export default function ResetPassword() {
   const [checkingSession, setCheckingSession] = useState(true)
@@ -14,6 +21,7 @@ export default function ResetPassword() {
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const { errorDe, tocar, validarEnvio } = useValidacion(validarNuevaPassword, { password, confirmPassword })
 
   const navigate = useNavigate()
 
@@ -64,16 +72,7 @@ export default function ResetPassword() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError(null)
-
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
-      return
-    }
+    if (!validarEnvio()) return
 
     setSubmitting(true)
     try {
@@ -119,8 +118,13 @@ export default function ResetPassword() {
               type="password"
               autoComplete="new-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                tocar('password')
+              }}
+              aria-invalid={Boolean(errorDe('password'))}
             />
+            <FieldError mensaje={errorDe('password')} />
 
             <label htmlFor="confirm-password">Confirmar contraseña</label>
             <input
@@ -128,8 +132,13 @@ export default function ResetPassword() {
               type="password"
               autoComplete="new-password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                tocar('confirmPassword')
+              }}
+              aria-invalid={Boolean(errorDe('confirmPassword'))}
             />
+            <FieldError mensaje={errorDe('confirmPassword')} />
 
             {error && <p className="form-error">{error}</p>}
 

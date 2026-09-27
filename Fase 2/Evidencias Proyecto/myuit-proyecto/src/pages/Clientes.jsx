@@ -1,9 +1,26 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { EMAIL_REGEX, PHONE_REGEX } from '../lib/validators'
+import {
+  PREFIJO_CELULAR,
+  extraerCelular,
+  soloErrores,
+  validarCelular,
+  validarCorreo,
+  validarTexto,
+} from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
+import FieldError from '../components/FieldError'
+import TelefonoInput from '../components/TelefonoInput'
+import { useValidacion } from '../hooks/useValidacion'
 
 const emptyForm = () => ({ nom_cli: '', num_cli: '', correo_cli: '' })
+
+const validarCliente = (form) =>
+  soloErrores({
+    nom_cli: validarTexto(form.nom_cli, 'el nombre'),
+    num_cli: validarCelular(form.num_cli),
+    correo_cli: validarCorreo(form.correo_cli, { obligatorio: false }),
+  })
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -17,6 +34,12 @@ export default function Clientes() {
   const [submitting, setSubmitting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const { errorDe, tocar, validarEnvio, reiniciar } = useValidacion(validarCliente, form)
+
+  const cambiarCampo = (campo, valor) => {
+    setForm((prev) => ({ ...prev, [campo]: valor }))
+    tocar(campo)
+  }
 
   const fetchClientes = async () => {
     const { data, error } = await supabase
@@ -40,6 +63,7 @@ export default function Clientes() {
   const abrirCrear = () => {
     setForm(emptyForm())
     setFormError(null)
+    reiniciar()
     setClienteActivo(null)
     setModo('crear')
   }
@@ -52,10 +76,11 @@ export default function Clientes() {
   const abrirEditar = (cliente) => {
     setForm({
       nom_cli: cliente.nom_cli ?? '',
-      num_cli: cliente.num_cli ?? '',
+      num_cli: extraerCelular(cliente.num_cli),
       correo_cli: cliente.correo_cli ?? '',
     })
     setFormError(null)
+    reiniciar()
     setClienteActivo(cliente)
     setModo('editar')
   }
@@ -92,25 +117,11 @@ export default function Clientes() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setFormError(null)
+    if (!validarEnvio()) return
 
     const nom_cli = form.nom_cli.trim()
-    const num_cli = form.num_cli.trim()
+    const num_cli = `${PREFIJO_CELULAR}${form.num_cli}`
     const correo_cli = form.correo_cli.trim()
-
-    if (!nom_cli || !num_cli) {
-      setFormError('Nombre y teléfono son obligatorios.')
-      return
-    }
-
-    if (!PHONE_REGEX.test(num_cli)) {
-      setFormError('Ingresa un teléfono válido.')
-      return
-    }
-
-    if (correo_cli && !EMAIL_REGEX.test(correo_cli)) {
-      setFormError('Ingresa un correo electrónico válido.')
-      return
-    }
 
     setSubmitting(true)
     try {
@@ -207,30 +218,35 @@ export default function Clientes() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>{modo === 'crear' ? 'Nuevo cliente' : 'Editar cliente'}</h2>
-            <form className="usuario-form" onSubmit={handleSubmit}>
+            <form className="usuario-form" onSubmit={handleSubmit} noValidate>
               <label>
                 Nombre
                 <input
                   value={form.nom_cli}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nom_cli: e.target.value }))}
-                  required
+                  onChange={(e) => cambiarCampo('nom_cli', e.target.value)}
+                  aria-invalid={Boolean(errorDe('nom_cli'))}
                 />
+                <FieldError mensaje={errorDe('nom_cli')} />
               </label>
               <label>
                 Teléfono
-                <input
+                <TelefonoInput
                   value={form.num_cli}
-                  onChange={(e) => setForm((prev) => ({ ...prev, num_cli: e.target.value }))}
-                  required
+                  onChange={(valor) => cambiarCampo('num_cli', valor)}
+                  invalid={Boolean(errorDe('num_cli'))}
+                  placeholder="12345678"
                 />
+                <FieldError mensaje={errorDe('num_cli')} />
               </label>
               <label>
                 Correo electrónico
                 <input
                   type="email"
                   value={form.correo_cli}
-                  onChange={(e) => setForm((prev) => ({ ...prev, correo_cli: e.target.value }))}
+                  onChange={(e) => cambiarCampo('correo_cli', e.target.value)}
+                  aria-invalid={Boolean(errorDe('correo_cli'))}
                 />
+                <FieldError mensaje={errorDe('correo_cli')} />
               </label>
 
               {formError && <p className="form-error">{formError}</p>}

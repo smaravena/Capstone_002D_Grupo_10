@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { ROLES } from '../lib/roles'
-import { EMAIL_REGEX } from '../lib/validators'
+import { soloErrores, validarCorreo, validarTexto } from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
+import FieldError from '../components/FieldError'
+import { useValidacion } from '../hooks/useValidacion'
 
 const ROLE_OPTIONS = Object.values(ROLES)
 
 const emptyForm = () => ({ nom_usuario: '', ape_usuario: '', rol_usu: ROLE_OPTIONS[0] ?? '', correo: '' })
+
+const validarUsuario = (form) =>
+  soloErrores({
+    nom_usuario: validarTexto(form.nom_usuario, 'el nombre'),
+    ape_usuario: validarTexto(form.ape_usuario, 'el apellido'),
+    correo: validarCorreo(form.correo),
+  })
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
@@ -20,6 +29,12 @@ export default function Usuarios() {
   const [submitting, setSubmitting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const { errorDe, tocar, validarEnvio, reiniciar } = useValidacion(validarUsuario, form)
+
+  const cambiarCampo = (campo, valor) => {
+    setForm((prev) => ({ ...prev, [campo]: valor }))
+    tocar(campo)
+  }
 
   const fetchUsuarios = async () => {
     const { data, error } = await supabase
@@ -43,6 +58,7 @@ export default function Usuarios() {
   const abrirCrear = () => {
     setForm(emptyForm())
     setFormError(null)
+    reiniciar()
     setUsuarioActivo(null)
     setModo('crear')
   }
@@ -60,6 +76,7 @@ export default function Usuarios() {
       correo: usuario.correo ?? '',
     })
     setFormError(null)
+    reiniciar()
     setUsuarioActivo(usuario)
     setModo('editar')
   }
@@ -97,21 +114,18 @@ export default function Usuarios() {
     event.preventDefault()
     setFormError(null)
 
+    if (!validarEnvio()) return
+
     const correo = form.correo.trim()
-
-    if (!form.nom_usuario.trim() || !form.ape_usuario.trim() || !correo) {
-      setFormError('Nombre, apellido y correo son obligatorios.')
-      return
-    }
-
-    if (!EMAIL_REGEX.test(correo)) {
-      setFormError('Ingresa un correo electrónico válido.')
-      return
-    }
 
     setSubmitting(true)
     try {
-      const payload = { ...form, correo }
+      const payload = {
+        ...form,
+        nom_usuario: form.nom_usuario.trim(),
+        ape_usuario: form.ape_usuario.trim(),
+        correo,
+      }
 
       if (modo === 'crear') {
         const { error } = await supabase.from('usuario').insert(payload)
@@ -226,31 +240,34 @@ export default function Usuarios() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>{modo === 'crear' ? 'Nuevo usuario' : 'Editar usuario'}</h2>
-            <form className="usuario-form" onSubmit={handleSubmit}>
+            <form className="usuario-form" onSubmit={handleSubmit} noValidate>
               <label>
                 Nombre
                 <input
                   value={form.nom_usuario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nom_usuario: e.target.value }))}
-                  required
+                  onChange={(e) => cambiarCampo('nom_usuario', e.target.value)}
+                  aria-invalid={Boolean(errorDe('nom_usuario'))}
                 />
+                <FieldError mensaje={errorDe('nom_usuario')} />
               </label>
               <label>
                 Apellido
                 <input
                   value={form.ape_usuario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, ape_usuario: e.target.value }))}
-                  required
+                  onChange={(e) => cambiarCampo('ape_usuario', e.target.value)}
+                  aria-invalid={Boolean(errorDe('ape_usuario'))}
                 />
+                <FieldError mensaje={errorDe('ape_usuario')} />
               </label>
               <label>
                 Correo electrónico
                 <input
                   type="email"
                   value={form.correo}
-                  onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))}
-                  required
+                  onChange={(e) => cambiarCampo('correo', e.target.value)}
+                  aria-invalid={Boolean(errorDe('correo'))}
                 />
+                <FieldError mensaje={errorDe('correo')} />
               </label>
               <label>
                 Rol
