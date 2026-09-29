@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { SITE_URL } from '../lib/siteUrl'
 import { ROLES } from '../lib/roles'
 import { soloErrores, validarCorreo, validarTexto } from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
@@ -137,7 +138,7 @@ export default function Usuarios() {
           email: correo,
           options: {
             shouldCreateUser: true,
-            emailRedirectTo: `${window.location.origin}/reset-password`,
+            emailRedirectTo: `${SITE_URL}/reset-password`,
           },
         })
         if (inviteError) {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
+import { SITE_URL } from '../lib/siteUrl'
 import Logo from '../components/Logo'
 import FieldError from '../components/FieldError'
 import { useValidacion } from '../hooks/useValidacion'
@@ -93,7 +94,7 @@ export default function Login() {
       }
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(correo, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${SITE_URL}/reset-password`,
       })
       if (resetError) throw resetError
 
