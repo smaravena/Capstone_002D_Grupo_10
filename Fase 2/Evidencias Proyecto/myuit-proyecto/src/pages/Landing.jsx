@@ -86,6 +86,9 @@ const FAQ_ITEMS = [
 const formatPrecio = (valor) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(valor)
 
+const DIRECCION_TALLER = 'Av. Las Américas 43, Viña del Mar, Valparaíso, Chile'
+const COORDENADAS_TALLER = '-33.0499975,-71.5686308'
+
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0)
   const [precios, setPrecios] = useState([])
@@ -134,6 +137,7 @@ export default function Landing() {
           <a href="#servicios">Servicios</a>
           <a href="#precios">Lista de precios</a>
           <a href="#faq">Preguntas frecuentes</a>
+          <a href="#ubicacion">Ubicación</a>
           <a href="#contacto">Contacto</a>
         </nav>
         <Link to={isAuthenticated ? '/usuarios' : '/login'} className="btn-login">
@@ -237,6 +241,20 @@ export default function Landing() {
               </div>
             )
           })}
+        </div>
+      </section>
+
+      <section id="ubicacion" className="landing-ubicacion">
+        <h2 className="precios-title-marker">Visítanos</h2>
+        <p className="precios-subtitle">{DIRECCION_TALLER}</p>
+        <div className="map-embed">
+          <iframe
+            title="Ubicación del taller en el mapa"
+            src={`https://www.google.com/maps?q=${COORDENADAS_TALLER}&z=17&output=embed`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
         </div>
       </section>
 
