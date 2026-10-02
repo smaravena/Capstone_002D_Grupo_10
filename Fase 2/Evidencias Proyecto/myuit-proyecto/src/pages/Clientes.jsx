@@ -170,11 +170,11 @@ export default function Clientes() {
           <tbody>
             {clientes.map((cliente) => (
               <tr key={cliente.id_cli}>
-                <td>{cliente.id_cli}</td>
-                <td>{cliente.nom_cli}</td>
-                <td>{cliente.num_cli}</td>
-                <td>{cliente.correo_cli ?? '—'}</td>
-                <td className="usuarios-actions">
+                <td data-label="#">{cliente.id_cli}</td>
+                <td data-label="Nombre">{cliente.nom_cli}</td>
+                <td data-label="Teléfono">{cliente.num_cli}</td>
+                <td data-label="Correo">{cliente.correo_cli ?? '—'}</td>
+                <td className="usuarios-actions" data-label="Acciones">
                   <button
                     type="button"
                     className="icon-btn"
@@ -207,7 +207,7 @@ export default function Clientes() {
             ))}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan={5}>Todavía no hay clientes registrados.</td>
+                <td colSpan={5} className="table-empty">Todavía no hay clientes registrados.</td>
               </tr>
             )}
           </tbody>

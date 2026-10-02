@@ -572,15 +572,15 @@ export default function Pedidos() {
           <tbody>
             {pedidos.map((pedido) => (
               <tr key={pedido.id_pedido}>
-                <td>{pedido.id_pedido}</td>
-                <td>{pedido.cliente?.nom_cli ?? '—'}</td>
-                <td>{pedido.fec_ini ?? '—'}</td>
-                <td>{pedido.fec_ter ?? '—'}</td>
-                <td>{pedido.detalle_pedido?.length ?? 0}</td>
-                <td>
+                <td data-label="#">{pedido.id_pedido}</td>
+                <td data-label="Cliente">{pedido.cliente?.nom_cli ?? '—'}</td>
+                <td data-label="Inicio">{pedido.fec_ini ?? '—'}</td>
+                <td data-label="Término">{pedido.fec_ter ?? '—'}</td>
+                <td data-label="Prendas">{pedido.detalle_pedido?.length ?? 0}</td>
+                <td data-label="Responsable">
                   {getResponsables(pedido).length ? getResponsables(pedido).join(', ') : '—'}
                 </td>
-                <td>
+                <td data-label="Estado">
                   <select
                     className="estado-select"
                     value={pedido.estado_pedido ?? ''}
@@ -598,7 +598,7 @@ export default function Pedidos() {
                     ))}
                   </select>
                 </td>
-                <td className="usuarios-actions">
+                <td className="usuarios-actions" data-label="Acciones">
                   <button
                     type="button"
                     className="icon-btn"
@@ -635,7 +635,7 @@ export default function Pedidos() {
             ))}
             {pedidos.length === 0 && (
               <tr>
-                <td colSpan={8}>Todavía no hay pedidos registrados.</td>
+                <td colSpan={8} className="table-empty">Todavía no hay pedidos registrados.</td>
               </tr>
             )}
           </tbody>

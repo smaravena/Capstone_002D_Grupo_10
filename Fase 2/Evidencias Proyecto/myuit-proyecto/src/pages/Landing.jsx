@@ -91,6 +91,7 @@ const COORDENADAS_TALLER = '-33.0499975,-71.5686308'
 
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0)
+  const [menuAbierto, setMenuAbierto] = useState(false)
   const [precios, setPrecios] = useState([])
   const [preciosError, setPreciosError] = useState(false)
   const { isAuthenticated } = useAuth()
@@ -128,11 +129,22 @@ export default function Landing() {
 
   return (
     <div className="landing">
-      <header className="landing-header">
+      <header className={`landing-header ${menuAbierto ? 'menu-open' : ''}`}>
         <Link to="/" className="landing-brand">
           <Logo size={52} />
         </Link>
-        <nav className="landing-nav">
+        <button
+          type="button"
+          className="menu-toggle"
+          aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuAbierto}
+          onClick={() => setMenuAbierto((v) => !v)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <nav className="landing-nav" onClick={() => setMenuAbierto(false)}>
           <a href="#taller">Nuestro taller</a>
           <a href="#servicios">Servicios</a>
           <a href="#precios">Lista de precios</a>

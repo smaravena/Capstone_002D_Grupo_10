@@ -190,14 +190,14 @@ export default function Usuarios() {
           <tbody>
             {usuarios.map((usuario) => (
               <tr key={usuario.id_usu}>
-                <td>{usuario.id_usu}</td>
-                <td>{usuario.nom_usuario}</td>
-                <td>{usuario.ape_usuario}</td>
-                <td>{usuario.correo ?? '—'}</td>
-                <td>
+                <td data-label="#">{usuario.id_usu}</td>
+                <td data-label="Nombre">{usuario.nom_usuario}</td>
+                <td data-label="Apellido">{usuario.ape_usuario}</td>
+                <td data-label="Correo">{usuario.correo ?? '—'}</td>
+                <td data-label="Rol">
                   <span className="rol-badge">{usuario.rol_usu ?? '—'}</span>
                 </td>
-                <td className="usuarios-actions">
+                <td className="usuarios-actions" data-label="Acciones">
                   <button
                     type="button"
                     className="icon-btn"
@@ -230,7 +230,7 @@ export default function Usuarios() {
             ))}
             {usuarios.length === 0 && (
               <tr>
-                <td colSpan={6}>Todavía no hay usuarios registrados.</td>
+                <td colSpan={6} className="table-empty">Todavía no hay usuarios registrados.</td>
               </tr>
             )}
           </tbody>

@@ -130,25 +130,25 @@ export default function MisTrabajos() {
               const pedido = detalle?.pedido
               return (
                 <tr key={trabajo.id_trabajo}>
-                  <td>{pedido?.id_pedido ?? '—'}</td>
-                  <td>{pedido?.cliente?.nom_cli ?? '—'}</td>
-                  <td>
+                  <td data-label="Pedido">{pedido?.id_pedido ?? '—'}</td>
+                  <td data-label="Cliente">{pedido?.cliente?.nom_cli ?? '—'}</td>
+                  <td data-label="Prenda">
                     {detalle ? `${detalle.cant_prendas}x ${detalle.tipo_prenda}` : '—'}
                   </td>
-                  <td>{TIPO_TRABAJO_LABELS[trabajo.tipo_trabajo] ?? trabajo.tipo_trabajo}</td>
+                  <td data-label="Tarea">{TIPO_TRABAJO_LABELS[trabajo.tipo_trabajo] ?? trabajo.tipo_trabajo}</td>
                   {esJefa && (
-                    <td>
+                    <td data-label="Responsable">
                       {trabajo.usuario
                         ? `${trabajo.usuario.nom_usuario} ${trabajo.usuario.ape_usuario}`
                         : '—'}
                     </td>
                   )}
-                  <td>
+                  <td data-label="Asignado">
                     {trabajo.fecha_asignacion
                       ? new Date(trabajo.fecha_asignacion).toLocaleDateString()
                       : '—'}
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     {trabajo.estado === 'terminado' ? (
                       <span className="estado-badge estado-badge-terminado">Terminado</span>
                     ) : (
@@ -170,7 +170,7 @@ export default function MisTrabajos() {
                       </select>
                     )}
                   </td>
-                  <td className="usuarios-actions">
+                  <td className="usuarios-actions" data-label="Acciones">
                     <button
                       type="button"
                       className="icon-btn"
@@ -197,7 +197,7 @@ export default function MisTrabajos() {
             })}
             {trabajos.length === 0 && (
               <tr>
-                <td colSpan={esJefa ? 8 : 7}>
+                <td colSpan={esJefa ? 8 : 7} className="table-empty">
                   {esJefa
                     ? 'No hay trabajos activos en este momento.'
                     : 'No tienes trabajos asignados por el momento.'}

@@ -1353,3 +1353,366 @@
   color: var(--text);
   font-size: 14px;
 }
+
+/* ===== Responsivo ===== */
+
+/* Botón hamburguesa (oculto en escritorio) */
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 42px;
+  height: 42px;
+  padding: 0 9px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.menu-toggle span {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--text-h);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.menu-open .menu-toggle span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+
+.menu-open .menu-toggle span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-open .menu-toggle span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.pedidos-header,
+.usuarios-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.modal-actions {
+  flex-wrap: wrap;
+}
+
+/* Header de la app */
+@media (max-width: 900px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .app-header .menu-toggle {
+    display: flex;
+    margin-left: auto;
+  }
+
+  .app-nav,
+  .app-user {
+    display: none;
+    flex-basis: 100%;
+  }
+
+  .app-header.menu-open .app-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .app-nav a {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app-nav a.active {
+    border-bottom-color: var(--accent);
+  }
+
+  .app-header.menu-open .app-user {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding-top: 8px;
+  }
+}
+
+/* Header de la landing */
+@media (max-width: 1000px) {
+  .landing-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .landing-header .btn-login {
+    margin-left: auto;
+    padding: 8px 16px;
+    font-size: 15px;
+  }
+
+  .landing-header .menu-toggle {
+    display: flex;
+    order: 1;
+  }
+
+  .landing-nav {
+    display: none;
+    order: 2;
+    flex-basis: 100%;
+  }
+
+  .landing-header.menu-open .landing-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .landing-nav a {
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .landing-nav a:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Tablas → tarjetas en pantallas angostas */
+@media (max-width: 860px) {
+  .pedidos-table,
+  .usuarios-table {
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .pedidos-table thead,
+  .usuarios-table thead {
+    display: none;
+  }
+
+  .pedidos-table,
+  .pedidos-table tbody,
+  .pedidos-table tr,
+  .pedidos-table td,
+  .usuarios-table,
+  .usuarios-table tbody,
+  .usuarios-table tr,
+  .usuarios-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .pedidos-table tr,
+  .usuarios-table tr {
+    margin-bottom: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--yellow);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .pedidos-table td,
+  .usuarios-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .pedidos-table td::before,
+  .usuarios-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .pedidos-table tbody tr td:last-child,
+  .usuarios-table tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .pedidos-table td.table-empty,
+  .usuarios-table td.table-empty {
+    display: block;
+    text-align: center;
+  }
+
+  .pedidos-table td.table-empty::before,
+  .usuarios-table td.table-empty::before {
+    content: none;
+  }
+
+  .pedidos-table td.usuarios-actions,
+  .usuarios-table td.usuarios-actions {
+    justify-content: flex-end;
+    gap: 4px;
+    background: var(--yellow-soft);
+  }
+
+  .pedidos-table td.usuarios-actions::before,
+  .usuarios-table td.usuarios-actions::before {
+    margin-right: auto;
+  }
+
+  .pedidos-table select {
+    max-width: 60%;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-main {
+    padding: 16px;
+  }
+
+  .pedidos-header h1,
+  .usuarios-header h1 {
+    font-size: 26px;
+    margin: 8px 0;
+  }
+
+  .pedidos-header button,
+  .usuarios-header button {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .pedido-form {
+    padding: 12px;
+  }
+
+  .pedido-form fieldset {
+    padding: 10px 12px 12px;
+  }
+
+  .detalle-precio-label {
+    max-width: none;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-card {
+    padding: 18px;
+    max-height: 94svh;
+  }
+
+  .modal-actions > button,
+  .modal-actions > .btn-secondary {
+    flex: 1 1 auto;
+  }
+
+  .modal-actions-split {
+    flex-wrap: wrap;
+  }
+
+  .modal-actions-split .modal-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .login-screen {
+    padding: 72px 16px 24px;
+  }
+
+  .login-card {
+    padding: 24px 20px;
+  }
+
+  .back-arrow {
+    top: 16px;
+    left: 16px;
+  }
+
+  .landing-hero-text h1 {
+    font-size: 40px;
+  }
+
+  .landing-hero-text .hero-title-logo {
+    -webkit-text-stroke: 5px #fff;
+  }
+
+  .landing-description {
+    font-size: 15px;
+  }
+
+  .carousel-hero .carousel-viewport {
+    height: 72svh;
+    min-height: 380px;
+  }
+
+  .carousel-overlay {
+    padding: 16px 48px;
+  }
+
+  .carousel-arrow {
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
+  }
+
+  .carousel-arrow-prev {
+    left: 6px;
+  }
+
+  .carousel-arrow-next {
+    right: 6px;
+  }
+
+  .landing-features,
+  .landing-precios,
+  .landing-faq,
+  .landing-ubicacion,
+  .landing-contact {
+    padding: 32px 16px;
+  }
+
+  .map-embed {
+    aspect-ratio: 4 / 3;
+  }
+
+  .social-icons {
+    flex-wrap: wrap;
+  }
+
+  .precios-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .landing-hero-text h1 {
+    font-size: 32px;
+  }
+
+  .precios-title-marker {
+    font-size: 28px;
+  }
+
+  .landing-header .btn-login {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+}

@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
   ROLES,
@@ -13,6 +14,15 @@ import Logo from './Logo'
 export default function Layout() {
   const { usuario, role, signOut } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const [rutaMenu, setRutaMenu] = useState(pathname)
+
+  // Cierra el menú móvil al cambiar de página
+  if (rutaMenu !== pathname) {
+    setRutaMenu(pathname)
+    setMenuAbierto(false)
+  }
 
   const puedeVerUsuarios =
     ROLES_MODULO_USUARIOS.length === 0 || ROLES_MODULO_USUARIOS.includes(role)
@@ -31,10 +41,21 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className={`app-header ${menuAbierto ? 'menu-open' : ''}`}>
         <Link to="/" className="app-title" title="Ir a la página de inicio">
           <Logo size={44} />
         </Link>
+        <button
+          type="button"
+          className="menu-toggle"
+          aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuAbierto}
+          onClick={() => setMenuAbierto((v) => !v)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <nav className="app-nav">
           {puedeVerUsuarios && (
             <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
