@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { ESTADOS_PEDIDO } from '../lib/pedidoConstants'
 import {
   MAX_DIGITOS_PRECIO,
-  PREFIJO_CELULAR,
+  construirCelular,
   limpiarPrecio,
   soloErrores,
   validarCantidad,
@@ -80,6 +80,18 @@ export default function Pedidos() {
 
   const cortadoras = usuarios.filter((u) => u.rol_usu === ROLES.CORTADORA)
   const operarias = usuarios.filter((u) => u.rol_usu === ROLES.OPERARIA)
+
+  // Clientes ordenados por cantidad de pedidos (el más frecuente primero).
+  const clientesOrdenados = useMemo(() => {
+    const conteo = new Map()
+    pedidos.forEach((p) => {
+      if (p.cliente?.id_cli) conteo.set(p.cliente.id_cli, (conteo.get(p.cliente.id_cli) ?? 0) + 1)
+    })
+    return [...clientes].sort((a, b) => {
+      const diff = (conteo.get(b.id_cli) ?? 0) - (conteo.get(a.id_cli) ?? 0)
+      return diff !== 0 ? diff : a.nom_cli.localeCompare(b.nom_cli)
+    })
+  }, [clientes, pedidos])
 
   const fetchPedidoIdsAsignados = async () => {
     if (!usuario?.id_usu) return []
@@ -437,7 +449,7 @@ export default function Pedidos() {
           .from('cliente')
           .insert({
             nom_cli: form.nuevoCliente.nom_cli.trim(),
-            num_cli: `${PREFIJO_CELULAR}${form.nuevoCliente.num_cli}`,
+            num_cli: construirCelular(form.nuevoCliente.num_cli),
             correo_cli: form.nuevoCliente.correo_cli.trim() || null,
           })
           .select('id_cli')
@@ -681,9 +693,9 @@ export default function Pedidos() {
                       aria-invalid={Boolean(errorDe('id_cli'))}
                     >
                       <option value="">Selecciona un cliente</option>
-                      {clientes.map((c) => (
+                      {clientesOrdenados.map((c) => (
                         <option key={c.id_cli} value={c.id_cli}>
-                          {c.nom_cli} ({c.num_cli})
+                          {c.nom_cli}
                         </option>
                       ))}
                     </select>

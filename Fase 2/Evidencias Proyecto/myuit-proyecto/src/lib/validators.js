@@ -71,6 +71,10 @@ export const DIGITOS_CELULAR = 8
 
 export const limpiarCelular = (valor) => valor.replace(/\D/g, '').slice(0, DIGITOS_CELULAR)
 
+// Arma el valor que se guarda en la BD: solo "9" + los 8 dígitos (9 caracteres,
+// el límite de la columna num_cli). El prefijo "+56 " es solo visual, no se guarda.
+export const construirCelular = (digitos) => `9${digitos}`
+
 // Convierte un teléfono guardado (ej: '+56 912345678') a los dígitos que van después de "+56 9".
 export const extraerCelular = (telefono) => {
   const digitos = String(telefono ?? '').replace(/\D/g, '')

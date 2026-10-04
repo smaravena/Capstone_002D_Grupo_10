@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
-  PREFIJO_CELULAR,
+  construirCelular,
   extraerCelular,
   soloErrores,
   validarCelular,
@@ -120,7 +120,7 @@ export default function Clientes() {
     if (!validarEnvio()) return
 
     const nom_cli = form.nom_cli.trim()
-    const num_cli = `${PREFIJO_CELULAR}${form.num_cli}`
+    const num_cli = construirCelular(form.num_cli)
     const correo_cli = form.correo_cli.trim()
 
     setSubmitting(true)
