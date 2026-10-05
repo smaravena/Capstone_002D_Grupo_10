@@ -278,7 +278,7 @@ export default function Landing() {
 
       <footer className="landing-footer">
         <Logo size={28} />
-        <p>© {new Date().getFullYear()} Mil y Una Ideas · De tu imaginación a la tela</p>
+        <p>Mil y Una Ideas · De tu imaginación a la tela</p>
       </footer>
     </div>
   )
