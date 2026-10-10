@@ -23,6 +23,9 @@ export const ROLES_MODULO_CLIENTES = [ROLES.JEFA_TALLER]
 // prendas escolares que se muestra en el landing público).
 export const ROLES_MODULO_PRECIOS = [ROLES.JEFA_TALLER]
 
+// Roles que pueden entrar al módulo de servicios.
+export const ROLES_MODULO_SERVICIOS = [ROLES.JEFA_TALLER]
+
 // Roles que pueden entrar a "Mis trabajos" (tareas de corte/armado).
 // Cortadora y Operaria solo ven las suyas; Jefa de taller ve además todas
 // las tareas activas del taller (ver MisTrabajos.jsx).

@@ -8,6 +8,7 @@ import {
   ROLES_MODULO_PEDIDOS,
   ROLES_MODULO_MIS_TRABAJOS,
   ROLES_MODULO_PRECIOS,
+  ROLES_MODULO_SERVICIOS,
 } from '../lib/roles'
 import Logo from './Logo'
 
@@ -33,6 +34,8 @@ export default function Layout() {
   const puedeVerMisTrabajos = ROLES_MODULO_MIS_TRABAJOS.includes(role)
   const puedeVerPrecios =
     ROLES_MODULO_PRECIOS.length === 0 || ROLES_MODULO_PRECIOS.includes(role)
+  const puedeVerServicios =
+    ROLES_MODULO_SERVICIOS.length === 0 || ROLES_MODULO_SERVICIOS.includes(role)
 
   const handleSignOut = async () => {
     await signOut()
@@ -70,6 +73,11 @@ export default function Layout() {
           {puedeVerPedidos && (
             <NavLink to="/pedidos" className={({ isActive }) => (isActive ? 'active' : '')}>
               Pedidos
+            </NavLink>
+          )}
+          {puedeVerServicios && (
+            <NavLink to="/servicios" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Servicios
             </NavLink>
           )}
           {puedeVerMisTrabajos && (

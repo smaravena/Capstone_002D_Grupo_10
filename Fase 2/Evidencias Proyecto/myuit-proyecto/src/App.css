@@ -361,6 +361,17 @@
   color: var(--yellow);
   -webkit-text-stroke: 2px var(--ink);
   paint-order: stroke fill;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title-icon {
+  height: 1em;
+  width: auto;
+  flex-shrink: 0;
+  -webkit-text-stroke: 0;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
 }
 
 .pedido-form {
@@ -389,6 +400,12 @@
   display: block;
   font-size: 14px;
   margin-top: 8px;
+}
+
+.campo-opcional {
+  font-weight: 400;
+  color: var(--text);
+  font-size: 12px;
 }
 
 .cliente-nuevo-fields {

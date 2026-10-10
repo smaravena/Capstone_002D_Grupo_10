@@ -4,6 +4,7 @@ import { ESTADOS_TRABAJO, TIPO_TRABAJO_LABELS } from '../lib/trabajoConstants'
 import { IconEye, IconTicket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../lib/roles'
+import iconoTaller from '../assets/icono.png'
 
 export default function MisTrabajos() {
   const { usuario, role } = useAuth()
@@ -104,7 +105,10 @@ export default function MisTrabajos() {
   return (
     <div className="pedidos-page">
       <div className="pedidos-header">
-        <h1>{esJefa ? 'Trabajos' : 'Mis trabajos'}</h1>
+        <h1 className="page-title">
+          {esJefa ? 'Trabajos' : 'Mis trabajos'}
+          <img src={iconoTaller} alt="" className="page-title-icon" />
+        </h1>
       </div>
 
       {loading && <p>Cargando trabajos...</p>}

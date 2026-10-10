@@ -12,6 +12,7 @@ import { IconEye, IconPencil, IconTrash } from '../components/Icons'
 import FieldError from '../components/FieldError'
 import TelefonoInput from '../components/TelefonoInput'
 import { useValidacion } from '../hooks/useValidacion'
+import iconoTaller from '../assets/icono.png'
 
 const emptyForm = () => ({ nom_cli: '', num_cli: '', correo_cli: '' })
 
@@ -147,7 +148,10 @@ export default function Clientes() {
   return (
     <div className="usuarios-page">
       <div className="usuarios-header">
-        <h1>Módulo de Clientes</h1>
+        <h1 className="page-title">
+          Módulo de Clientes
+          <img src={iconoTaller} alt="" className="page-title-icon" />
+        </h1>
         <button type="button" onClick={abrirCrear}>
            Nuevo cliente
         </button>

@@ -11,6 +11,7 @@ import {
 } from '../lib/validators'
 import FieldError from '../components/FieldError'
 import { useValidacion } from '../hooks/useValidacion'
+import iconoTaller from '../assets/icono.png'
 
 const NUEVA_TALLA = '__nueva_talla__'
 
@@ -251,7 +252,10 @@ export default function Precios() {
   return (
     <div className="precios-page">
       <div className="usuarios-header">
-        <h1>Lista de precios</h1>
+        <h1 className="page-title">
+          Lista de precios
+          <img src={iconoTaller} alt="" className="page-title-icon" />
+        </h1>
         <button type="button" onClick={abrirNuevaCategoria}>
           Nueva categoría
         </button>

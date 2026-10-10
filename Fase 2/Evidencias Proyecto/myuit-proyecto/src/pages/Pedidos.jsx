@@ -18,6 +18,7 @@ import TelefonoInput from '../components/TelefonoInput'
 import { useValidacion } from '../hooks/useValidacion'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../lib/roles'
+import iconoTaller from '../assets/icono.png'
 
 const ROLES_SOLO_PROPIOS = [ROLES.CORTADORA, ROLES.OPERARIA]
 
@@ -43,6 +44,7 @@ const emptyForm = () => ({
   fec_ini: '',
   fec_ter: '',
   estado_pedido: ESTADOS_PEDIDO[0],
+  abono: '',
   detalles: [emptyDetalle()],
 })
 
@@ -78,8 +80,8 @@ export default function Pedidos() {
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const cortadoras = usuarios.filter((u) => u.rol_usu === ROLES.CORTADORA)
-  const operarias = usuarios.filter((u) => u.rol_usu === ROLES.OPERARIA)
+  const cortadoras = usuarios.filter((u) => u.rol_usu === ROLES.CORTADORA || u.rol_usu === ROLES.JEFA_TALLER)
+  const operarias = usuarios.filter((u) => u.rol_usu === ROLES.OPERARIA || u.rol_usu === ROLES.JEFA_TALLER)
 
   // Clientes ordenados por cantidad de pedidos (el más frecuente primero).
   const clientesOrdenados = useMemo(() => {
@@ -117,7 +119,7 @@ export default function Pedidos() {
     let query = supabase
       .from('pedido')
       .select(
-        'id_pedido, fec_ini, fec_ter, estado_pedido, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), detalle_pedido ( id_detalle, tipo_prenda, talla, precio, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
+        'id_pedido, fec_ini, fec_ter, estado_pedido, abono, created_at, cliente:id_cli ( id_cli, nom_cli, num_cli, correo_cli ), detalle_pedido ( id_detalle, tipo_prenda, talla, precio, cant_prendas, obs_detalle, trabajo ( id_trabajo, tipo_trabajo, id_usu, estado, usuario:id_usu ( nom_usuario, ape_usuario ) ) )',
       )
       .order('created_at', { ascending: false })
 
@@ -209,16 +211,21 @@ export default function Pedidos() {
   }
 
   const handleTipoPrendaChange = (index, tipoPrenda) => {
-    const talla = getTallasDisponibles(tipoPrenda)[0] ?? ''
-    const precioBase = getPrecioBase(tipoPrenda, talla)
     tocar(`detalles.${index}.tipo_prenda`)
     setForm((prev) => {
       const detalles = [...prev.detalles]
+      const anterior = detalles[index]
+      // Solo autocompletamos talla/precio cuando el texto coincide exactamente con
+      // una categoría existente (elegida de la lista); si es un tipo nuevo escrito a
+      // mano (ej: "Mochila"), dejamos que la persona ingrese talla y precio libremente.
+      const coincideCategoria = categoriasPrecio.some((c) => c.nombre === tipoPrenda)
+      const talla = coincideCategoria ? (getTallasDisponibles(tipoPrenda)[0] ?? '') : anterior.talla
+      const precioBase = coincideCategoria ? getPrecioBase(tipoPrenda, talla) : null
       detalles[index] = {
-        ...detalles[index],
+        ...anterior,
         tipo_prenda: tipoPrenda,
         talla,
-        precio: precioBase !== null ? String(precioBase) : '',
+        precio: precioBase !== null ? String(precioBase) : anterior.precio,
       }
       return { ...prev, detalles }
     })
@@ -272,6 +279,7 @@ export default function Pedidos() {
       fec_ini: pedido.fec_ini ?? '',
       fec_ter: pedido.fec_ter ?? '',
       estado_pedido: ESTADOS_PEDIDO.includes(pedido.estado_pedido) ? pedido.estado_pedido : ESTADOS_PEDIDO[0],
+      abono: pedido.abono != null ? String(pedido.abono) : '',
       detalles: pedido.detalle_pedido?.length
         ? pedido.detalle_pedido.map((d) => {
             const trabajoCorte = d.trabajo?.find((t) => t.tipo_trabajo === 'corte')
@@ -329,18 +337,26 @@ export default function Pedidos() {
       errores.fec_ter = 'La fecha de término no puede ser anterior a la fecha de inicio.'
     }
 
+    if (valores.abono !== '' && (!Number.isFinite(Number(valores.abono)) || Number(valores.abono) < 0)) {
+      errores.abono = 'Ingresa un abono válido.'
+    }
+
     if (!ESTADOS_PEDIDO.includes(valores.estado_pedido)) {
       errores.estado_pedido = 'Selecciona un estado válido de la lista.'
     }
 
     valores.detalles.forEach((detalle, index) => {
       const campo = (nombre) => `detalles.${index}.${nombre}`
-      if (!detalle.tipo_prenda.trim()) errores[campo('tipo_prenda')] = 'Selecciona el tipo de prenda.'
-      if (getTallasDisponibles(detalle.tipo_prenda).length > 0 && !detalle.talla) {
-        errores[campo('talla')] = 'Selecciona una talla.'
-      }
+      if (!detalle.tipo_prenda.trim()) errores[campo('tipo_prenda')] = 'Indica el tipo de prenda.'
+      // La talla es obligatoria solo cuando el tipo de prenda es uno existente (elegido
+      // de la lista); si la prenda fue escrita a mano (no existe en Precios), la talla
+      // queda opcional porque esa prenda no tiene tallas predefinidas.
+      const coincideCategoria = categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda)
+      if (coincideCategoria && !detalle.talla.trim()) errores[campo('talla')] = 'Indica la talla.'
       errores[campo('cant_prendas')] = validarCantidad(detalle.cant_prendas)
       errores[campo('precio')] = validarPrecio(detalle.precio)
+      if (!detalle.id_usu_corte) errores[campo('id_usu_corte')] = 'Selecciona una cortadora.'
+      if (!detalle.id_usu_armado) errores[campo('id_usu_armado')] = 'Selecciona una operaria.'
     })
 
     return soloErrores(errores)
@@ -468,6 +484,7 @@ export default function Pedidos() {
         fec_ini: form.fec_ini || null,
         fec_ter: form.fec_ter || null,
         estado_pedido: form.estado_pedido,
+        abono: form.abono !== '' ? Number(form.abono) : null,
       }
 
       if (modo === 'editar' && pedidoActivo) {
@@ -556,7 +573,10 @@ export default function Pedidos() {
   return (
     <div className="pedidos-page">
       <div className="pedidos-header">
-        <h1>Ingreso y Control de Pedidos</h1>
+        <h1 className="page-title">
+          Ingreso y Control de Pedidos
+          <img src={iconoTaller} alt="" className="page-title-icon" />
+        </h1>
         {!soloPropios && (
           <button type="button" onClick={abrirCrear}>
             Nuevo pedido
@@ -808,55 +828,60 @@ export default function Pedidos() {
                   </select>
                   <FieldError mensaje={errorDe('estado_pedido')} />
                 </label>
+                <label>
+                  Abono (CLP) <span className="campo-opcional">(opcional)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    placeholder="Abono"
+                    value={form.abono}
+                    onChange={(e) => setForm((prev) => ({ ...prev, abono: e.target.value }))}
+                    aria-invalid={Boolean(errorDe('abono'))}
+                  />
+                  <FieldError mensaje={errorDe('abono')} />
+                </label>
               </fieldset>
 
               <fieldset>
                 <legend>Detalle de prendas</legend>
+                <datalist id="datalist-tipos-prenda">
+                  {categoriasPrecio.map((c) => (
+                    <option key={c.nombre} value={c.nombre} />
+                  ))}
+                </datalist>
                 {form.detalles.map((detalle, index) => (
                   <div className="detalle-item" key={detalle.id_detalle ?? index}>
                     <div className="detalle-row">
                       <div>
-                        <select
+                        <input
+                          list="datalist-tipos-prenda"
                           value={detalle.tipo_prenda}
                           onChange={(e) => handleTipoPrendaChange(index, e.target.value)}
+                          placeholder="Tipo de prenda"
                           aria-label="Tipo de prenda"
                           aria-invalid={Boolean(errorDe(`detalles.${index}.tipo_prenda`))}
-                        >
-                          <option value="">Tipo de prenda</option>
-                          {detalle.tipo_prenda &&
-                            !categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda) && (
-                              <option value={detalle.tipo_prenda} disabled>
-                                {detalle.tipo_prenda}
-                              </option>
-                            )}
-                          {categoriasPrecio.map((c) => (
-                            <option key={c.nombre} value={c.nombre}>
-                              {c.nombre}
-                            </option>
-                          ))}
-                        </select>
+                        />
                         <FieldError mensaje={errorDe(`detalles.${index}.tipo_prenda`)} />
                       </div>
                       <div>
-                        <select
+                        <input
+                          list={`datalist-tallas-${index}`}
                           value={detalle.talla}
                           onChange={(e) => handleTallaChange(index, e.target.value)}
-                          disabled={getTallasDisponibles(detalle.tipo_prenda).length === 0}
+                          placeholder={
+                            categoriasPrecio.some((c) => c.nombre === detalle.tipo_prenda)
+                              ? 'Talla'
+                              : 'Talla (opcional)'
+                          }
                           aria-label="Talla"
                           aria-invalid={Boolean(errorDe(`detalles.${index}.talla`))}
-                        >
-                          <option value="">Sin talla</option>
-                          {detalle.talla && !getTallasDisponibles(detalle.tipo_prenda).includes(detalle.talla) && (
-                            <option value={detalle.talla} disabled>
-                              {detalle.talla}
-                            </option>
-                          )}
+                        />
+                        <datalist id={`datalist-tallas-${index}`}>
                           {getTallasDisponibles(detalle.tipo_prenda).map((talla) => (
-                            <option key={talla} value={talla}>
-                              {talla}
-                            </option>
+                            <option key={talla} value={talla} />
                           ))}
-                        </select>
+                        </datalist>
                         <FieldError mensaje={errorDe(`detalles.${index}.talla`)} />
                       </div>
                       <div>
@@ -885,28 +910,32 @@ export default function Pedidos() {
                         <select
                           value={detalle.id_usu_corte}
                           onChange={(e) => handleDetalleChange(index, 'id_usu_corte', e.target.value)}
+                          aria-invalid={Boolean(errorDe(`detalles.${index}.id_usu_corte`))}
                         >
-                          <option value="">Sin asignar</option>
+                          <option value="">Selecciona una cortadora</option>
                           {cortadoras.map((u) => (
                             <option key={u.id_usu} value={u.id_usu}>
                               {u.nom_usuario} {u.ape_usuario}
                             </option>
                           ))}
                         </select>
+                        <FieldError mensaje={errorDe(`detalles.${index}.id_usu_corte`)} />
                       </label>
                       <label>
                         Operaria (armado)
                         <select
                           value={detalle.id_usu_armado}
                           onChange={(e) => handleDetalleChange(index, 'id_usu_armado', e.target.value)}
+                          aria-invalid={Boolean(errorDe(`detalles.${index}.id_usu_armado`))}
                         >
-                          <option value="">Sin asignar</option>
+                          <option value="">Selecciona una operaria</option>
                           {operarias.map((u) => (
                             <option key={u.id_usu} value={u.id_usu}>
                               {u.nom_usuario} {u.ape_usuario}
                             </option>
                           ))}
                         </select>
+                        <FieldError mensaje={errorDe(`detalles.${index}.id_usu_armado`)} />
                       </label>
                     </div>
                     <label className="detalle-precio-label">
@@ -982,6 +1011,12 @@ export default function Pedidos() {
               <div className="detalle-field">
                 <span className="detalle-label">Estado</span>
                 <span className="detalle-value">{pedidoActivo.estado_pedido ?? '—'}</span>
+              </div>
+              <div className="detalle-field">
+                <span className="detalle-label">Abono</span>
+                <span className="detalle-value">
+                  {pedidoActivo.abono != null ? formatPrecio(pedidoActivo.abono) : '—'}
+                </span>
               </div>
               <div className="detalle-field">
                 <span className="detalle-label">Responsable(s)</span>

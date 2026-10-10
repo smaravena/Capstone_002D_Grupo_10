@@ -6,6 +6,7 @@ import { soloErrores, validarCorreo, validarTexto } from '../lib/validators'
 import { IconEye, IconPencil, IconTrash } from '../components/Icons'
 import FieldError from '../components/FieldError'
 import { useValidacion } from '../hooks/useValidacion'
+import iconoTaller from '../assets/icono.png'
 
 const ROLE_OPTIONS = Object.values(ROLES)
 
@@ -104,7 +105,13 @@ export default function Usuarios() {
     setDeleting(false)
 
     if (error) {
-      setDeleteError(error.message)
+      if (error.code === '23503') {
+        setDeleteError(
+          'No se puede eliminar este usuario porque tiene trabajos asignados. Reasigna o elimina esos trabajos antes de eliminarlo.',
+        )
+      } else {
+        setDeleteError(error.message)
+      }
       return
     }
     setUsuarios((prev) => prev.filter((u) => u.id_usu !== usuarioActivo.id_usu))
@@ -166,7 +173,10 @@ export default function Usuarios() {
   return (
     <div className="usuarios-page">
       <div className="usuarios-header">
-        <h1>Módulo de Usuarios</h1>
+        <h1 className="page-title">
+          Módulo de Usuarios
+          <img src={iconoTaller} alt="" className="page-title-icon" />
+        </h1>
         <button type="button" onClick={abrirCrear}>
            Nuevo usuario
         </button>
