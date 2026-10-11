@@ -1001,6 +1001,7 @@
 .precios-subtitle {
   color: var(--text);
   margin-bottom: 32px;
+  text-transform: uppercase;
 }
 
 .precios-error {
@@ -1064,6 +1065,7 @@
   flex-shrink: 0;
   color: var(--text);
   font-size: 14px;
+  text-transform: uppercase;
 }
 
 .precio-leader {
@@ -1331,9 +1333,14 @@
   }
 }
 
+.landing-contact h2 {
+  text-transform: uppercase;
+}
+
 .contact-subtitle {
   color: var(--text);
   margin-bottom: 24px;
+  text-transform: uppercase;
 }
 
 .social-icons {
