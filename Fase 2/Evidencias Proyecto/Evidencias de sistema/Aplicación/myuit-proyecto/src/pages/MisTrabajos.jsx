@@ -6,6 +6,23 @@ import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../lib/roles'
 import iconoTaller from '../assets/icono.png'
 
+// Convierte una fecha ISO a "dd/mm/aaaa HH:mm" en hora de Chile (America/Santiago),
+// sin depender del separador por defecto del navegador/locale.
+const formatFechaChile = (iso) => {
+  if (!iso) return '—'
+  const partes = new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso))
+  const obtener = (tipo) => partes.find((p) => p.type === tipo)?.value ?? ''
+  return `${obtener('day')}/${obtener('month')}/${obtener('year')} ${obtener('hour')}:${obtener('minute')}`
+}
+
 export default function MisTrabajos() {
   const { usuario, role } = useAuth()
   const esJefa = role === ROLES.JEFA_TALLER
@@ -17,6 +34,10 @@ export default function MisTrabajos() {
   const [trabajoAFinalizar, setTrabajoAFinalizar] = useState(null)
   const [finalizando, setFinalizando] = useState(false)
   const [ticketTrabajo, setTicketTrabajo] = useState(null)
+  const [historialTrabajo, setHistorialTrabajo] = useState(null)
+  const [historial, setHistorial] = useState([])
+  const [cargandoHistorial, setCargandoHistorial] = useState(false)
+  const [errorHistorial, setErrorHistorial] = useState(null)
 
   const fetchTrabajos = async () => {
     if (!usuario?.id_usu) return
@@ -47,17 +68,32 @@ export default function MisTrabajos() {
     fetchTrabajos().then(() => setLoading(false))
   }, [usuario?.id_usu, esJefa])
 
-  const handleEstadoChange = async (id_trabajo, estado) => {
+  // No bloqueamos el cambio de estado si el registro de historial falla: es
+  // información auxiliar, no debe impedir que la tarea avance.
+  const registrarHistorial = async (id_trabajo, estadoAnterior, estadoNuevo) => {
+    const { error } = await supabase.from('trabajo_historial').insert({
+      id_trabajo,
+      id_usu: usuario?.id_usu ?? null,
+      estado_anterior: estadoAnterior,
+      estado_nuevo: estadoNuevo,
+    })
+    if (error) console.error('No se pudo registrar el historial del trabajo:', error)
+  }
+
+  const handleEstadoChange = async (trabajo, estado) => {
+    const estadoAnterior = trabajo.estado
     const payload = { estado, fecha_termino: null }
 
-    const { error } = await supabase.from('trabajo').update(payload).eq('id_trabajo', id_trabajo)
+    const { error } = await supabase.from('trabajo').update(payload).eq('id_trabajo', trabajo.id_trabajo)
     if (error) {
       setLoadError(error.message)
       return
     }
 
+    await registrarHistorial(trabajo.id_trabajo, estadoAnterior, estado)
+
     setTrabajos((prev) =>
-      prev.map((t) => (t.id_trabajo === id_trabajo ? { ...t, ...payload } : t)),
+      prev.map((t) => (t.id_trabajo === trabajo.id_trabajo ? { ...t, ...payload } : t)),
     )
   }
 
@@ -66,7 +102,7 @@ export default function MisTrabajos() {
       setTrabajoAFinalizar(trabajo)
       return
     }
-    handleEstadoChange(trabajo.id_trabajo, estado)
+    handleEstadoChange(trabajo, estado)
   }
 
   const cancelarFinalizar = () => setTrabajoAFinalizar(null)
@@ -75,6 +111,7 @@ export default function MisTrabajos() {
     if (!trabajoAFinalizar) return
 
     setFinalizando(true)
+    const estadoAnterior = trabajoAFinalizar.estado
     const payload = { estado: 'terminado', fecha_termino: new Date().toISOString() }
 
     const { error } = await supabase
@@ -82,13 +119,15 @@ export default function MisTrabajos() {
       .update(payload)
       .eq('id_trabajo', trabajoAFinalizar.id_trabajo)
 
-    setFinalizando(false)
-
     if (error) {
+      setFinalizando(false)
       setLoadError(error.message)
       setTrabajoAFinalizar(null)
       return
     }
+
+    await registrarHistorial(trabajoAFinalizar.id_trabajo, estadoAnterior, 'terminado')
+    setFinalizando(false)
 
     const trabajoFinalizado = { ...trabajoAFinalizar, ...payload }
     setTrabajos((prev) =>
@@ -101,6 +140,34 @@ export default function MisTrabajos() {
   const abrirVer = (trabajo) => setTrabajoActivo(trabajo)
   const cerrarModal = () => setTrabajoActivo(null)
   const cerrarTicket = () => setTicketTrabajo(null)
+
+  const abrirHistorial = async (trabajo) => {
+    setHistorialTrabajo(trabajo)
+    setCargandoHistorial(true)
+    setErrorHistorial(null)
+
+    const { data, error } = await supabase
+      .from('trabajo_historial')
+      .select(
+        'id_historial, estado_anterior, estado_nuevo, fecha_cambio, usuario:id_usu ( nom_usuario, ape_usuario, rol_usu )',
+      )
+      .eq('id_trabajo', trabajo.id_trabajo)
+      .order('fecha_cambio', { ascending: false })
+
+    setCargandoHistorial(false)
+
+    if (error) {
+      setErrorHistorial(error.message)
+      return
+    }
+    setHistorial(data ?? [])
+  }
+
+  const cerrarHistorial = () => {
+    setHistorialTrabajo(null)
+    setHistorial([])
+    setErrorHistorial(null)
+  }
 
   return (
     <div className="pedidos-page">
@@ -289,7 +356,53 @@ export default function MisTrabajos() {
               </div>
             </div>
             <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => abrirHistorial(trabajoActivo)}>
+                Historial de edición
+              </button>
               <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historialTrabajo && (
+        <div className="modal-overlay" onClick={cerrarHistorial}>
+          <div className="modal-card modal-card-lg" onClick={(e) => e.stopPropagation()}>
+            <h2>Historial de edición</h2>
+            <p className="modal-hint">
+              Trabajo #{historialTrabajo.id_trabajo} —{' '}
+              {TIPO_TRABAJO_LABELS[historialTrabajo.tipo_trabajo] ?? historialTrabajo.tipo_trabajo}
+            </p>
+
+            {cargandoHistorial && <p>Cargando historial...</p>}
+            {errorHistorial && <p className="form-error">{errorHistorial}</p>}
+
+            {!cargandoHistorial && !errorHistorial && (
+              <ul className="historial-list">
+                {historial.map((h) => (
+                  <li key={h.id_historial} className="historial-item">
+                    <div className="historial-cambio">
+                      <strong>{h.estado_anterior ?? 'sin estado'}</strong>
+                      <span aria-hidden="true"> → </span>
+                      <strong>{h.estado_nuevo}</strong>
+                    </div>
+                    <div className="historial-meta">
+                      {h.usuario
+                        ? `${h.usuario.nom_usuario} ${h.usuario.ape_usuario} (${h.usuario.rol_usu ?? 'sin rol'})`
+                        : 'Usuario desconocido'}
+                      {' · '}
+                      {formatFechaChile(h.fecha_cambio)}
+                    </div>
+                  </li>
+                ))}
+                {historial.length === 0 && <li className="historial-item">Todavía no hay cambios registrados.</li>}
+              </ul>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={cerrarHistorial}>
                 Cerrar
               </button>
             </div>

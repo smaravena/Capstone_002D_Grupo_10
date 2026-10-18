@@ -788,6 +788,35 @@
   color: var(--text);
 }
 
+.historial-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.historial-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.historial-cambio {
+  text-transform: capitalize;
+  color: var(--text-h);
+}
+
+.historial-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
 /* Landing */
 .landing {
   text-align: left;

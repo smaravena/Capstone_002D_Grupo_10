@@ -46,13 +46,13 @@ const FEATURES = [
     color: 'var(--blue)',
   },
   {
-    title: 'Control de pedidos',
-    text: 'Seguimiento claro del estado de cada pedido, desde el ingreso hasta la entrega.',
+    title: 'Servicios personalizados',
+    text: 'Uniformes, encargos especiales y piezas a pedido, adaptadas a lo que cada cliente necesita.',
     color: 'var(--green)',
   },
   {
-    title: 'Gestión de equipo',
-    text: 'Administra a tu equipo del taller con roles y accesos según cada función.',
+    title: 'Servicios de arreglos',
+    text: 'Ajustes, reparaciones y transformaciones de prendas para darles una segunda vida.',
     color: 'var(--orange)',
   },
 ]
