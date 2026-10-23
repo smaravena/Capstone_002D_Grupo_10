@@ -1,7 +1,7 @@
 const SOCIAL_LINKS = [
   {
     name: 'WhatsApp',
-    url: 'https://whatsapp.com',
+    url: 'https://wa.me/56998118222',
     color: 'var(--green)',
     Icon: (props) => (
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>

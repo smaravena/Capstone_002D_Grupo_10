@@ -61,12 +61,12 @@ const FAQ_ITEMS = [
   {
     question: '¿Qué es Mil y Una Ideas?',
     answer:
-      'Es la plataforma de gestión de nuestro taller: te permite administrar usuarios y pedidos de forma simple, todo en un solo lugar.',
+      'Somos un taller de confección ubicado en el Cerro Placeres, Valparaíso, dedicado a la creación de ropa y accesorios de tela hechos con dedicación y cuidado en cada detalle. Trabajamos tanto con clientes particulares como con talleres externos, a quienes ofrecemos nuestros servicios de confección.',
   },
   {
-    question: '¿Cómo ingreso al sistema?',
+    question: '¿Qué precio tienen nuestros servicios?',
     answer:
-      'Usa el botón "Iniciar sesión" en la parte superior derecha e ingresa el correo y la contraseña que te entregó tu taller.',
+      'Nuestros precios varían según el tipo de prenda, la talla y la complejidad del diseño. Para consultar precios de prendas escolares, puedes consultar nuestra lista de precios en la sección "Lista de precios" de esta página. Si tienes un proyecto específico en mente, contáctanos para obtener un presupuesto personalizado.',
   },
   {
     question: '¿Puedo recuperar mi contraseña?',
