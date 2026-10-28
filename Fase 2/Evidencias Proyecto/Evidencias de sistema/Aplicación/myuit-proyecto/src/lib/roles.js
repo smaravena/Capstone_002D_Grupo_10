@@ -31,6 +31,11 @@ export const ROLES_MODULO_SERVICIOS = [ROLES.JEFA_TALLER]
 // las tareas activas del taller (ver MisTrabajos.jsx).
 export const ROLES_MODULO_MIS_TRABAJOS = [ROLES.CORTADORA, ROLES.OPERARIA, ROLES.JEFA_TALLER]
 
+// Roles que ven el botón flotante de reporte semanal con IA (Gemini).
+// Debe coincidir con ROL_PERMITIDO en supabase/functions/reporte-semanal y
+// con la policy RLS de la tabla reporte_semanal.
+export const ROLES_REPORTE_IA = [ROLES.JEFA_TALLER]
+
 // Ruta a la que se redirige a cada rol justo después de iniciar sesión.
 export function getHomeRoute(role) {
   if (ROLES_MODULO_PEDIDOS.includes(role)) return '/pedidos'

@@ -9,8 +9,10 @@ import {
   ROLES_MODULO_MIS_TRABAJOS,
   ROLES_MODULO_PRECIOS,
   ROLES_MODULO_SERVICIOS,
+  ROLES_REPORTE_IA,
 } from '../lib/roles'
 import Logo from './Logo'
+import ReporteIA from './ReporteIA'
 
 export default function Layout() {
   const { usuario, role, signOut } = useAuth()
@@ -36,6 +38,7 @@ export default function Layout() {
     ROLES_MODULO_PRECIOS.length === 0 || ROLES_MODULO_PRECIOS.includes(role)
   const puedeVerServicios =
     ROLES_MODULO_SERVICIOS.length === 0 || ROLES_MODULO_SERVICIOS.includes(role)
+  const puedeVerReporteIA = ROLES_REPORTE_IA.includes(role)
 
   const handleSignOut = async () => {
     await signOut()
@@ -104,6 +107,7 @@ export default function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      {puedeVerReporteIA && <ReporteIA />}
     </div>
   )
 }

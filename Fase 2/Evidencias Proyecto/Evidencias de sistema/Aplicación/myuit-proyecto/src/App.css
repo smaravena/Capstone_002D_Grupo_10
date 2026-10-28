@@ -1774,3 +1774,242 @@
     font-size: 14px;
   }
 }
+
+/* Reporte semanal con IA (botón flotante, solo Jefa de taller) */
+.reporte-ia-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.reporte-ia-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.reporte-ia-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 92px;
+  z-index: 40;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  text-align: left;
+  overflow: hidden;
+}
+
+.reporte-ia-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--yellow-soft);
+}
+
+.reporte-ia-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-h);
+}
+
+.reporte-ia-periodo {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.reporte-ia-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.reporte-ia-body h3 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+}
+
+.reporte-ia-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.reporte-ia-body li + li {
+  margin-top: 4px;
+}
+
+.reporte-ia-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.reporte-ia-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.reporte-ia-kpi strong {
+  font-size: 18px;
+}
+
+.reporte-ia-kpi-label,
+.reporte-ia-kpi-delta {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.reporte-ia-kpi-delta.sube {
+  color: #15803d;
+}
+
+.reporte-ia-kpi-delta.baja {
+  color: #d9376e;
+}
+
+.reporte-ia-resumen {
+  margin: 14px 0 0;
+  line-height: 1.5;
+}
+
+.reporte-ia-hallazgos {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.reporte-ia-hallazgo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+}
+
+.reporte-ia-hallazgo.positivo {
+  border-left-color: var(--green);
+}
+
+.reporte-ia-hallazgo.alerta {
+  border-left-color: var(--orange);
+}
+
+.reporte-ia-nota {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .reporte-ia-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .reporte-ia-panel {
+    right: 16px;
+    bottom: 84px;
+  }
+}
+
+.reporte-ia-acciones {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.reporte-ia-acciones .btn-primary,
+.reporte-ia-acciones .btn-secondary {
+  padding: 6px 14px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.reporte-ia-acciones button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+/* Solo se aplica a la copia que captura html2canvas para el PDF:
+   más ancha (letra de tamaño normal en A4), sin alto máximo ni scroll */
+.reporte-ia-panel.reporte-ia-exportando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  width: 720px;
+  max-height: none;
+  border: none;
+  box-shadow: none;
+}
+
+.reporte-ia-exportando .reporte-ia-body {
+  overflow: visible;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.reporte-ia-exportando .reporte-ia-kpis {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.reporte-ia-exportando .reporte-ia-body h3 {
+  margin-top: 22px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--yellow-soft);
+}
+
+/* html2canvas dibuja mal las viñetas nativas: se reemplazan por un ::before */
+.reporte-ia-exportando .reporte-ia-body ul:not(.reporte-ia-hallazgos) {
+  list-style: none;
+  padding-left: 0;
+}
+
+.reporte-ia-exportando .reporte-ia-body ul:not(.reporte-ia-hallazgos) li {
+  position: relative;
+  padding-left: 20px;
+}
+
+.reporte-ia-exportando .reporte-ia-body ul:not(.reporte-ia-hallazgos) li::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0.65em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.reporte-ia-exportando .reporte-ia-hallazgo + .reporte-ia-hallazgo {
+  margin-top: 8px;
+}
