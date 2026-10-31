@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { ESTADOS_TRABAJO, TIPO_TRABAJO_LABELS } from '../lib/trabajoConstants'
+import { ESTADOS_TRABAJO, TIPOS_TRABAJO, TIPO_TRABAJO_LABELS } from '../lib/trabajoConstants'
 import { IconEye, IconTicket } from '../components/Icons'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../lib/roles'
@@ -23,6 +23,35 @@ const formatFechaChile = (iso) => {
   return `${obtener('day')}/${obtener('month')}/${obtener('year')} ${obtener('hour')}:${obtener('minute')}`
 }
 
+// Agrupa las tareas por pedido para que la jefa vea un solo registro por
+// pedido. Se mantiene el orden de llegada (asignación más reciente primero) y
+// dentro de cada pedido las tareas quedan por prenda y luego corte → armado.
+const agruparPorPedido = (trabajos) => {
+  const grupos = new Map()
+  trabajos.forEach((t) => {
+    const pedido = t.detalle?.pedido
+    const clave = pedido?.id_pedido ?? `sin-pedido-${t.id_trabajo}`
+    if (!grupos.has(clave)) grupos.set(clave, { clave, pedido, trabajos: [] })
+    grupos.get(clave).trabajos.push(t)
+  })
+
+  return [...grupos.values()].map((grupo) => ({
+    ...grupo,
+    trabajos: [...grupo.trabajos].sort(
+      (a, b) =>
+        (a.detalle?.id_detalle ?? 0) - (b.detalle?.id_detalle ?? 0) ||
+        TIPOS_TRABAJO.indexOf(a.tipo_trabajo) - TIPOS_TRABAJO.indexOf(b.tipo_trabajo),
+    ),
+  }))
+}
+
+// Estado general del pedido según sus tareas.
+const estadoDelGrupo = (trabajos) => {
+  if (trabajos.every((t) => t.estado === 'terminado')) return 'terminado'
+  if (trabajos.every((t) => t.estado === 'pendiente')) return 'pendiente'
+  return 'en progreso'
+}
+
 export default function MisTrabajos() {
   const { usuario, role } = useAuth()
   const esJefa = role === ROLES.JEFA_TALLER
@@ -38,6 +67,7 @@ export default function MisTrabajos() {
   const [historial, setHistorial] = useState([])
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [errorHistorial, setErrorHistorial] = useState(null)
+  const [pedidosAbiertos, setPedidosAbiertos] = useState(() => new Set())
 
   const fetchTrabajos = async () => {
     if (!usuario?.id_usu) return
@@ -49,9 +79,9 @@ export default function MisTrabajos() {
       )
       .order('fecha_asignacion', { ascending: false })
 
-    query = esJefa
-      ? query.or(`estado.neq.terminado,id_usu.eq.${usuario.id_usu}`)
-      : query.eq('id_usu', usuario.id_usu)
+    // La jefa trae todas las tareas para calcular el avance completo de cada
+    // pedido; los pedidos ya cerrados se filtran al agrupar.
+    if (!esJefa) query = query.eq('id_usu', usuario.id_usu)
 
     const { data, error } = await query
 
@@ -169,6 +199,72 @@ export default function MisTrabajos() {
     setErrorHistorial(null)
   }
 
+  const togglePedido = (clave) =>
+    setPedidosAbiertos((prev) => {
+      const siguiente = new Set(prev)
+      if (siguiente.has(clave)) siguiente.delete(clave)
+      else siguiente.add(clave)
+      return siguiente
+    })
+
+  // Igual que antes: la jefa ve los pedidos con tareas pendientes y aquellos
+  // donde ella misma tiene tareas asignadas.
+  const gruposVisibles = esJefa
+    ? agruparPorPedido(trabajos).filter((g) =>
+        g.trabajos.some((t) => t.estado !== 'terminado' || t.id_usu === usuario?.id_usu),
+      )
+    : []
+
+  const nombreResponsable = (trabajo) =>
+    trabajo.usuario ? `${trabajo.usuario.nom_usuario} ${trabajo.usuario.ape_usuario}` : '—'
+
+  const renderEstado = (trabajo) =>
+    trabajo.estado === 'terminado' ? (
+      <span className="estado-badge estado-badge-terminado">Terminado</span>
+    ) : (
+      <select
+        className="estado-select"
+        value={trabajo.estado ?? ''}
+        onChange={(e) => onEstadoSelect(trabajo, e.target.value)}
+      >
+        {!ESTADOS_TRABAJO.includes(trabajo.estado) && (
+          <option value={trabajo.estado ?? ''} disabled>
+            {trabajo.estado || 'Sin estado'}
+          </option>
+        )}
+        {ESTADOS_TRABAJO.map((estado) => (
+          <option key={estado} value={estado}>
+            {estado}
+          </option>
+        ))}
+      </select>
+    )
+
+  const renderAcciones = (trabajo) => (
+    <>
+      <button
+        type="button"
+        className="icon-btn"
+        title="Ver"
+        aria-label="Ver trabajo"
+        onClick={() => abrirVer(trabajo)}
+      >
+        <IconEye />
+      </button>
+      {trabajo.estado === 'terminado' && (
+        <button
+          type="button"
+          className="icon-btn"
+          title="Ver ticket"
+          aria-label="Ver ticket de finalización"
+          onClick={() => setTicketTrabajo(trabajo)}
+        >
+          <IconTicket />
+        </button>
+      )}
+    </>
+  )
+
   return (
     <div className="pedidos-page">
       <div className="pedidos-header">
@@ -181,7 +277,97 @@ export default function MisTrabajos() {
       {loading && <p>Cargando trabajos...</p>}
       {loadError && <p className="form-error">{loadError}</p>}
 
-      {!loading && !loadError && (
+      {!loading && !loadError && esJefa && (
+        <table className="pedidos-table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Prendas</th>
+              <th>Entrega</th>
+              <th>Avance</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gruposVisibles.map((grupo) => {
+              const { clave, pedido } = grupo
+              const abierto = pedidosAbiertos.has(clave)
+              const terminadas = grupo.trabajos.filter((t) => t.estado === 'terminado').length
+              const prendas = new Set(grupo.trabajos.map((t) => t.detalle?.id_detalle)).size
+              const estado = estadoDelGrupo(grupo.trabajos)
+              return (
+                <Fragment key={clave}>
+                  <tr className="trabajo-grupo-row" onClick={() => togglePedido(clave)}>
+                    <td data-label="Pedido">
+                      <button
+                        type="button"
+                        className="trabajo-grupo-toggle"
+                        aria-expanded={abierto}
+                        aria-label={`${abierto ? 'Ocultar' : 'Ver'} tareas del pedido ${pedido?.id_pedido ?? ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          togglePedido(clave)
+                        }}
+                      >
+                        <span className="trabajo-grupo-chevron" aria-hidden="true">
+                          {abierto ? '▾' : '▸'}
+                        </span>
+                        #{pedido?.id_pedido ?? '—'}
+                      </button>
+                    </td>
+                    <td data-label="Cliente">{pedido?.cliente?.nom_cli ?? '—'}</td>
+                    <td data-label="Prendas">
+                      {prendas} {prendas === 1 ? 'prenda' : 'prendas'}
+                    </td>
+                    <td data-label="Entrega">{pedido?.fec_ter ?? '—'}</td>
+                    <td data-label="Avance">
+                      {terminadas}/{grupo.trabajos.length} tareas
+                    </td>
+                    <td data-label="Estado">
+                      <span className={`estado-badge estado-badge-${estado.replace(' ', '-')}`}>{estado}</span>
+                    </td>
+                  </tr>
+                  {abierto && (
+                    <tr className="trabajo-tareas-row">
+                      <td colSpan={6}>
+                        <ul className="trabajo-tareas">
+                          {grupo.trabajos.map((trabajo) => (
+                            <li key={trabajo.id_trabajo} className="trabajo-tarea">
+                              <span className="trabajo-tarea-prenda">
+                                {trabajo.detalle
+                                  ? `${trabajo.detalle.cant_prendas}x ${trabajo.detalle.tipo_prenda}`
+                                  : '—'}
+                              </span>
+                              <span className="trabajo-tarea-tipo">
+                                {TIPO_TRABAJO_LABELS[trabajo.tipo_trabajo] ?? trabajo.tipo_trabajo}
+                              </span>
+                              <span className="trabajo-tarea-responsable">{nombreResponsable(trabajo)}</span>
+                              <span className="trabajo-tarea-estado">{renderEstado(trabajo)}</span>
+                              <span className="trabajo-tarea-acciones usuarios-actions">
+                                {renderAcciones(trabajo)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+            {gruposVisibles.length === 0 && (
+              <tr>
+                <td colSpan={6} className="table-empty">
+                  No hay trabajos activos en este momento.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {!loading && !loadError && !esJefa && (
         <table className="pedidos-table">
           <thead>
             <tr>
@@ -189,7 +375,6 @@ export default function MisTrabajos() {
               <th>Cliente</th>
               <th>Prenda</th>
               <th>Tarea</th>
-              {esJefa && <th>Responsable</th>}
               <th>Asignado</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -207,71 +392,22 @@ export default function MisTrabajos() {
                     {detalle ? `${detalle.cant_prendas}x ${detalle.tipo_prenda}` : '—'}
                   </td>
                   <td data-label="Tarea">{TIPO_TRABAJO_LABELS[trabajo.tipo_trabajo] ?? trabajo.tipo_trabajo}</td>
-                  {esJefa && (
-                    <td data-label="Responsable">
-                      {trabajo.usuario
-                        ? `${trabajo.usuario.nom_usuario} ${trabajo.usuario.ape_usuario}`
-                        : '—'}
-                    </td>
-                  )}
                   <td data-label="Asignado">
                     {trabajo.fecha_asignacion
                       ? new Date(trabajo.fecha_asignacion).toLocaleDateString()
                       : '—'}
                   </td>
-                  <td data-label="Estado">
-                    {trabajo.estado === 'terminado' ? (
-                      <span className="estado-badge estado-badge-terminado">Terminado</span>
-                    ) : (
-                      <select
-                        className="estado-select"
-                        value={trabajo.estado ?? ''}
-                        onChange={(e) => onEstadoSelect(trabajo, e.target.value)}
-                      >
-                        {!ESTADOS_TRABAJO.includes(trabajo.estado) && (
-                          <option value={trabajo.estado ?? ''} disabled>
-                            {trabajo.estado || 'Sin estado'}
-                          </option>
-                        )}
-                        {ESTADOS_TRABAJO.map((estado) => (
-                          <option key={estado} value={estado}>
-                            {estado}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
+                  <td data-label="Estado">{renderEstado(trabajo)}</td>
                   <td className="usuarios-actions" data-label="Acciones">
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Ver"
-                      aria-label="Ver trabajo"
-                      onClick={() => abrirVer(trabajo)}
-                    >
-                      <IconEye />
-                    </button>
-                    {trabajo.estado === 'terminado' && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Ver ticket"
-                        aria-label="Ver ticket de finalización"
-                        onClick={() => setTicketTrabajo(trabajo)}
-                      >
-                        <IconTicket />
-                      </button>
-                    )}
+                    {renderAcciones(trabajo)}
                   </td>
                 </tr>
               )
             })}
             {trabajos.length === 0 && (
               <tr>
-                <td colSpan={esJefa ? 8 : 7} className="table-empty">
-                  {esJefa
-                    ? 'No hay trabajos activos en este momento.'
-                    : 'No tienes trabajos asignados por el momento.'}
+                <td colSpan={7} className="table-empty">
+                  No tienes trabajos asignados por el momento.
                 </td>
               </tr>
             )}

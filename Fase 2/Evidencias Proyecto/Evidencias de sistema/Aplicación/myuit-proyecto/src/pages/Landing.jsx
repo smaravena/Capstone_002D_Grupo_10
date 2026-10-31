@@ -69,9 +69,9 @@ const FAQ_ITEMS = [
       'Nuestros precios varían según el tipo de prenda, la talla y la complejidad del diseño. Para consultar precios de prendas escolares, puedes consultar nuestra lista de precios en la sección "Lista de precios" de esta página. Si tienes un proyecto específico en mente, contáctanos para obtener un presupuesto personalizado.',
   },
   {
-    question: '¿Puedo recuperar mi contraseña?',
+    question: '¿Cuanto tarda en completarse un pedido?',
     answer:
-      'Próximamente. Por ahora, contacta a la persona encargada de administrar los usuarios de tu taller.',
+      'El tiempo de entrega depende del tipo de prenda, la cantidad y la complejidad del diseño. Para pedidos estándar, el tiempo de entrega suele ser de 3 a 4 días hábiles. Para proyectos más complejos o personalizados, el tiempo puede variar. Te recomendamos consultar vía whatsapp para obtener un estimado más preciso.',
   },
   {
     question: '¿Quién puede crear nuevos usuarios?',
