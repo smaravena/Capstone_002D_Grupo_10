@@ -13,6 +13,18 @@ const formatoCLP = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 })
 
+// Días que se guarda cada reporte. Debe coincidir con el cron
+// `limpiar-reportes-semanales` de Supabase, que borra los más antiguos.
+const DIAS_RETENCION = 60
+
+const fechaCorta = (iso) =>
+  new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
+
+const etiquetaReporte = (r) =>
+  `${fechaCorta(r.fecha_desde)} al ${fechaCorta(r.fecha_hasta)} · generado ${new Date(
+    r.created_at,
+  ).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+
 const sumarValores = (obj) => Object.values(obj ?? {}).reduce((acc, n) => acc + Number(n || 0), 0)
 
 function indicadores(metricas) {
@@ -69,29 +81,51 @@ async function mensajeDeError(error) {
 export default function ReporteIA() {
   const [abierto, setAbierto] = useState(false)
   const [reporte, setReporte] = useState(null)
+  const [historial, setHistorial] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [generando, setGenerando] = useState(false)
   const [error, setError] = useState(null)
   const [exportando, setExportando] = useState(false)
   const panelRef = useRef(null)
 
-  const cargarUltimo = async () => {
+  const cargarReporte = async (id) => {
     setCargando(true)
     setError(null)
     const { data, error: err } = await supabase
       .from('reporte_semanal')
       .select('*')
-      .eq('estado', 'ok')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .eq('id_reporte', id)
+      .single()
     if (err) setError(err.message)
     else setReporte(data)
     setCargando(false)
   }
 
+  // Lista de reportes guardados (solo los de los últimos DIAS_RETENCION días;
+  // los más antiguos los borra el cron de Supabase) y abre el más reciente.
+  const cargarHistorial = async () => {
+    setCargando(true)
+    setError(null)
+    const limite = new Date(Date.now() - DIAS_RETENCION * 24 * 60 * 60 * 1000).toISOString()
+    const { data, error: err } = await supabase
+      .from('reporte_semanal')
+      .select('id_reporte, fecha_desde, fecha_hasta, created_at')
+      .eq('estado', 'ok')
+      .gte('created_at', limite)
+      .order('created_at', { ascending: false })
+
+    if (err) {
+      setError(err.message)
+      setCargando(false)
+      return
+    }
+    setHistorial(data)
+    if (data.length > 0) await cargarReporte(data[0].id_reporte)
+    else setCargando(false)
+  }
+
   const alternarPanel = () => {
-    if (!abierto && !reporte && !cargando) cargarUltimo()
+    if (!abierto && !historial && !cargando) cargarHistorial()
     setAbierto((v) => !v)
   }
 
@@ -99,8 +133,13 @@ export default function ReporteIA() {
     setGenerando(true)
     setError(null)
     const { data, error: err } = await supabase.functions.invoke('reporte-semanal', { method: 'POST' })
-    if (err) setError(await mensajeDeError(err))
-    else setReporte(data.reporte)
+    if (err) {
+      setError(await mensajeDeError(err))
+    } else {
+      const { id_reporte, fecha_desde, fecha_hasta, created_at } = data.reporte
+      setReporte(data.reporte)
+      setHistorial((prev) => [{ id_reporte, fecha_desde, fecha_hasta, created_at }, ...(prev ?? [])])
+    }
     setGenerando(false)
   }
 
@@ -159,21 +198,46 @@ export default function ReporteIA() {
                   type="button"
                   className="btn-secondary"
                   onClick={descargarPdf}
-                  disabled={exportando}
+                  disabled={exportando || cargando}
                   title="Descargar este reporte en PDF"
                 >
                   {exportando ? 'Creando PDF…' : 'PDF'}
                 </button>
               )}
-              <button type="button" className="btn-primary" onClick={generar} disabled={generando || exportando}>
-                {generando ? 'Analizando…' : reporte ? 'Actualizar' : 'Generar'}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={generar}
+                disabled={generando || exportando}
+                title="Analiza los últimos 7 días y guarda un reporte nuevo"
+              >
+                {generando ? 'Analizando…' : reporte ? 'Nuevo' : 'Generar'}
               </button>
             </div>
           </header>
 
+          {historial?.length > 0 && (
+            <div className="reporte-ia-historial" data-html2canvas-ignore="true">
+              <label htmlFor="reporte-ia-historial">Reportes guardados</label>
+              <select
+                id="reporte-ia-historial"
+                value={reporte?.id_reporte ?? ''}
+                onChange={(e) => cargarReporte(Number(e.target.value))}
+                disabled={cargando || generando || exportando}
+              >
+                {historial.map((r) => (
+                  <option key={r.id_reporte} value={r.id_reporte}>
+                    {etiquetaReporte(r)}
+                  </option>
+                ))}
+              </select>
+              <span>Se conservan {DIAS_RETENCION} días.</span>
+            </div>
+          )}
+
           <div className="reporte-ia-body">
             {error && <p className="form-error">{error}</p>}
-            {cargando && <p>Cargando último reporte…</p>}
+            {cargando && <p>Cargando reporte…</p>}
             {generando && <p>Gemini está analizando la semana del taller. Puede tardar unos segundos.</p>}
 
             {!cargando && !generando && !reporte && !error && (
@@ -183,7 +247,7 @@ export default function ReporteIA() {
               </p>
             )}
 
-            {reporte && !generando && (
+            {reporte && !generando && !cargando && (
               <>
                 <div className="reporte-ia-kpis">
                   {indicadores(reporte.metricas).map((kpi) => (

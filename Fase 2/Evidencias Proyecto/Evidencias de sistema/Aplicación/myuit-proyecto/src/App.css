@@ -2103,3 +2103,35 @@
 .reporte-ia-exportando .reporte-ia-hallazgo + .reporte-ia-hallazgo {
   margin-top: 8px;
 }
+
+.reporte-ia-historial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.reporte-ia-historial label {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.reporte-ia-historial select {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.reporte-ia-historial span {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text);
+}
