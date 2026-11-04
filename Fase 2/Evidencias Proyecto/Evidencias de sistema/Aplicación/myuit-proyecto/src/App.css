@@ -2135,3 +2135,470 @@
   font-size: 12px;
   color: var(--text);
 }
+
+/* Dashboard (Jefa de taller) */
+.dashboard {
+  /* Color de las marcas de datos (validado: contraste >= 3:1 en cada modo) */
+  --chart-mark: #ff1f8f;
+  --chart-grid: #efe9d6;
+  --status-ok: #15803d;
+  --status-alerta: #b45309;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard {
+    --chart-mark: #f03a8c;
+    --chart-grid: #3a3226;
+    --status-ok: #4ade80;
+    --status-alerta: #fbbf24;
+  }
+}
+
+.dashboard h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--text-h);
+}
+
+.dash-tile-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dash-tile-detalle {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dash-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.dash-hero-valor {
+  display: block;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-h);
+}
+
+.dash-hero-partes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+}
+
+.dash-hero-partes strong {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.dash-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dash-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.dash-tile-valor {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.dash-delta {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dash-delta.sube,
+.dash-estado.ok {
+  color: var(--status-ok);
+}
+
+.dash-delta.baja,
+.dash-estado.alerta {
+  color: var(--status-alerta);
+}
+
+.dash-estado {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dash-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.dash-card {
+  min-width: 0;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.dash-card-ancha {
+  grid-column: 1 / -1;
+}
+
+.dash-card-sub {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dash-vacio {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* Columnas: ventas por mes */
+.dash-columnas {
+  display: flex;
+  gap: 8px;
+  height: 220px;
+  padding-top: 8px;
+}
+
+.dash-eje {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  /* Centra cada número sobre su línea guía (medio alto de línea = 7px) */
+  margin-top: -7px;
+  padding-bottom: 17px;
+  font-size: 11px;
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-plot {
+  position: relative;
+  flex: 1;
+  display: flex;
+  gap: 2px;
+}
+
+/* Capa de líneas guía: mismo alto que el área de barras (sin la fila de meses) */
+.dash-grid-capa {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  pointer-events: none;
+}
+
+.dash-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--chart-grid);
+}
+
+.dash-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+
+.dash-col-area {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: default;
+}
+
+.dash-col-barra {
+  position: relative;
+  width: 100%;
+  max-width: 24px;
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-mark);
+  transition: opacity 0.15s ease;
+}
+
+.dash-col-barra.atenuada {
+  opacity: 0.35;
+}
+
+.dash-col:focus-visible .dash-col-barra {
+  outline: 2px solid var(--text-h);
+  outline-offset: 2px;
+}
+
+.dash-col-valor {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.dash-col-etiqueta {
+  height: 24px;
+  line-height: 24px;
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.dash-tooltip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dash-tooltip strong {
+  color: var(--text-h);
+  text-transform: capitalize;
+}
+
+.dash-tabla-datos {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.dash-tabla-datos summary {
+  cursor: pointer;
+  color: var(--text);
+}
+
+.dash-tabla-datos table {
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-tabla-datos th,
+.dash-tabla-datos td {
+  padding: 4px 16px 4px 0;
+  text-align: left;
+  text-transform: capitalize;
+}
+
+/* Rankings: barras horizontales */
+.dash-ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-ranking-nombre {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-ranking-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-ranking-barra {
+  height: 12px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+  background: var(--chart-mark);
+}
+
+.dash-ranking-valor {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tablas del dashboard */
+.dash-tabla-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.dash-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.dash-tabla th,
+.dash-tabla td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.dash-tabla th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dash-tabla td {
+  color: var(--text-h);
+}
+
+.dash-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dash-capital {
+  text-transform: capitalize;
+}
+
+@media (max-width: 600px) {
+  .dash-hero {
+    padding: 16px;
+  }
+
+  .dash-hero-valor {
+    font-size: 36px;
+  }
+
+  .dash-grid-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Menú "Exportar" del dashboard */
+.dash-exportar {
+  position: relative;
+}
+
+.usuarios-header .dash-exportar > button {
+  margin-top: 0;
+}
+
+.usuarios-header .dash-exportar > button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.dash-exportar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.usuarios-header .dash-exportar-menu button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-h);
+  font-weight: 600;
+  text-align: left;
+  transform: none;
+}
+
+.usuarios-header .dash-exportar-menu button:hover,
+.usuarios-header .dash-exportar-menu button:focus-visible {
+  background: var(--yellow-soft);
+  box-shadow: none;
+  transform: none;
+}
+
+.dash-exportar-menu button span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.dash-exportar-error {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .dash-exportar {
+    width: 100%;
+  }
+
+  .dash-exportar-menu {
+    left: 0;
+    right: 0;
+  }
+}

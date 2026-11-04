@@ -13,7 +13,9 @@ import Clientes from './pages/Clientes'
 import MisTrabajos from './pages/MisTrabajos'
 import Precios from './pages/Precios'
 import Servicios from './pages/Servicios'
+import Dashboard from './pages/Dashboard'
 import {
+  ROLES_MODULO_DASHBOARD,
   ROLES_MODULO_PEDIDOS,
   ROLES_MODULO_USUARIOS,
   ROLES_MODULO_CLIENTES,
@@ -41,6 +43,14 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={ROLES_MODULO_DASHBOARD}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/usuarios"
               element={

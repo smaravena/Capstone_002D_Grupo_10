@@ -10,6 +10,7 @@ import {
   ROLES_MODULO_PRECIOS,
   ROLES_MODULO_SERVICIOS,
   ROLES_REPORTE_IA,
+  ROLES_MODULO_DASHBOARD,
 } from '../lib/roles'
 import Logo from './Logo'
 import ReporteIA from './ReporteIA'
@@ -39,6 +40,7 @@ export default function Layout() {
   const puedeVerServicios =
     ROLES_MODULO_SERVICIOS.length === 0 || ROLES_MODULO_SERVICIOS.includes(role)
   const puedeVerReporteIA = ROLES_REPORTE_IA.includes(role)
+  const puedeVerDashboard = ROLES_MODULO_DASHBOARD.includes(role)
 
   const handleSignOut = async () => {
     await signOut()
@@ -63,6 +65,11 @@ export default function Layout() {
           <span />
         </button>
         <nav className="app-nav">
+          {puedeVerDashboard && (
+            <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Dashboard
+            </NavLink>
+          )}
           {puedeVerUsuarios && (
             <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
               Usuarios

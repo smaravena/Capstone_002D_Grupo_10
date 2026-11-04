@@ -36,8 +36,12 @@ export const ROLES_MODULO_MIS_TRABAJOS = [ROLES.CORTADORA, ROLES.OPERARIA, ROLES
 // con la policy RLS de la tabla reporte_semanal.
 export const ROLES_REPORTE_IA = [ROLES.JEFA_TALLER]
 
+// Roles que pueden entrar al dashboard de KPIs del negocio.
+export const ROLES_MODULO_DASHBOARD = [ROLES.JEFA_TALLER]
+
 // Ruta a la que se redirige a cada rol justo después de iniciar sesión.
 export function getHomeRoute(role) {
+  if (ROLES_MODULO_DASHBOARD.includes(role)) return '/dashboard'
   if (ROLES_MODULO_PEDIDOS.includes(role)) return '/pedidos'
   if (ROLES_MODULO_MIS_TRABAJOS.includes(role)) return '/mis-trabajos'
   return '/'
