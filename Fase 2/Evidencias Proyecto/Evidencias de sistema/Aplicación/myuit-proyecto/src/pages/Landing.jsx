@@ -73,14 +73,6 @@ const FAQ_ITEMS = [
     answer:
       'El tiempo de entrega depende del tipo de prenda, la cantidad y la complejidad del diseño. Para pedidos estándar, el tiempo de entrega suele ser de 3 a 4 días hábiles. Para proyectos más complejos o personalizados, el tiempo puede variar. Te recomendamos consultar vía whatsapp para obtener un estimado más preciso.',
   },
-  {
-    question: '¿Quién puede crear nuevos usuarios?',
-    answer: 'Contenido de ejemplo: cualquier persona con acceso al módulo de Usuarios puede crear nuevas cuentas.',
-  },
-  {
-    question: '¿Dónde veo el estado de mis pedidos?',
-    answer: 'Contenido de ejemplo: dentro del módulo de Pedidos, una vez que iniciaste sesión.',
-  },
 ]
 
 const formatPrecio = (valor) =>
