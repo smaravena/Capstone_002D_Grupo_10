@@ -30,6 +30,7 @@ CREATE TABLE public.pedido (
   calendar_event_id character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   id_usu_responsable integer,
+  abono numeric,
   CONSTRAINT pedido_pkey PRIMARY KEY (id_pedido),
   CONSTRAINT pedido_id_cli_fkey FOREIGN KEY (id_cli) REFERENCES public.cliente(id_cli),
   CONSTRAINT pedido_id_usu_responsable_fkey FOREIGN KEY (id_usu_responsable) REFERENCES public.usuario(id_usu)
@@ -72,4 +73,49 @@ CREATE TABLE public.categoria_prenda (
   icono text NOT NULL DEFAULT 'shirt'::text,
   color text NOT NULL DEFAULT 'var(--accent)'::text,
   CONSTRAINT categoria_prenda_pkey PRIMARY KEY (id_categoria)
+);
+CREATE TABLE public.servicio (
+  id_servicio integer NOT NULL DEFAULT nextval('servicio_id_servicio_seq'::regclass),
+  id_cli integer NOT NULL,
+  fec_ini date,
+  fec_ter date,
+  estado_servicio text,
+  abono numeric,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT servicio_pkey PRIMARY KEY (id_servicio),
+  CONSTRAINT servicio_id_cli_fkey FOREIGN KEY (id_cli) REFERENCES public.cliente(id_cli)
+);
+CREATE TABLE public.detalle_servicio (
+  id_detalle integer NOT NULL DEFAULT nextval('detalle_servicio_id_detalle_seq'::regclass),
+  id_servicio integer NOT NULL,
+  tipo_servicio text NOT NULL,
+  precio numeric,
+  obs_detalle text,
+  CONSTRAINT detalle_servicio_pkey PRIMARY KEY (id_detalle),
+  CONSTRAINT detalle_servicio_id_servicio_fkey FOREIGN KEY (id_servicio) REFERENCES public.servicio(id_servicio)
+);
+CREATE TABLE public.trabajo_historial (
+  id_historial integer NOT NULL DEFAULT nextval('trabajo_historial_id_historial_seq'::regclass),
+  id_trabajo integer NOT NULL,
+  id_usu integer,
+  estado_anterior text,
+  estado_nuevo text NOT NULL,
+  fecha_cambio timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT trabajo_historial_pkey PRIMARY KEY (id_historial),
+  CONSTRAINT trabajo_historial_id_trabajo_fkey FOREIGN KEY (id_trabajo) REFERENCES public.trabajo(id_trabajo),
+  CONSTRAINT trabajo_historial_id_usu_fkey FOREIGN KEY (id_usu) REFERENCES public.usuario(id_usu)
+);
+CREATE TABLE public.reporte_semanal (
+  id_reporte bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  fecha_desde timestamp with time zone NOT NULL,
+  fecha_hasta timestamp with time zone NOT NULL,
+  metricas jsonb NOT NULL,
+  contenido jsonb,
+  modelo text,
+  estado text NOT NULL DEFAULT 'ok'::text CHECK (estado = ANY (ARRAY['ok'::text, 'error'::text])),
+  error text,
+  generado_por uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT reporte_semanal_pkey PRIMARY KEY (id_reporte),
+  CONSTRAINT reporte_semanal_generado_por_fkey FOREIGN KEY (generado_por) REFERENCES auth.users(id)
 );
